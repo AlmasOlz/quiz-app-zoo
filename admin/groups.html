@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin — Топтар</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css">
+    <style>body { font-family: 'Poppins', sans-serif; }</style>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="../js/firebase-config.js"></script>
+    <script src="../js/auth.js"></script>
+</head>
+<body class="admin-body">
+<div id="toast-container"></div>
+
+<!-- Mobile offcanvas sidebar -->
+<div class="offcanvas offcanvas-start admin-mobile-offcanvas" tabindex="-1" id="adminSidebar">
+    <div class="offcanvas-header border-bottom border-white border-opacity-10">
+        <div class="sidebar-brand py-0 px-0 border-0">
+            <i class="fas fa-shield-alt"></i><span>Admin Panel</span>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body p-0">
+        <nav class="sidebar-nav">
+            <a href="index.html"   class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            <a href="quizzes.html" class="nav-link"><i class="fas fa-clipboard-list"></i> Тесттер</a>
+            <a href="import.html"  class="nav-link"><i class="fas fa-file-import"></i> Импорт</a>
+            <a href="users.html"   class="nav-link"><i class="fas fa-users"></i> Юзерлер</a>
+            <a href="groups.html"  class="nav-link active"><i class="fas fa-layer-group"></i> Топтар</a>
+            <a href="results.html" class="nav-link"><i class="fas fa-chart-bar"></i> Нәтижелер</a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="../index.html" class="nav-link"><i class="fas fa-home"></i> Сайтқа қайту</a>
+            <a href="#" onclick="logoutUser()" class="nav-link" style="color:#fd79a8"><i class="fas fa-sign-out-alt"></i> Шығу</a>
+        </div>
+    </div>
+</div>
+
+<!-- Desktop sidebar -->
+<div class="admin-sidebar">
+    <div class="sidebar-brand">
+        <i class="fas fa-shield-alt"></i><span>Admin Panel</span>
+    </div>
+    <nav class="sidebar-nav flex-grow-1">
+        <a href="index.html"   class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+        <a href="quizzes.html" class="nav-link"><i class="fas fa-clipboard-list"></i> Тесттер</a>
+        <a href="import.html"  class="nav-link"><i class="fas fa-file-import"></i> Импорт</a>
+        <a href="users.html"   class="nav-link"><i class="fas fa-users"></i> Юзерлер</a>
+        <a href="groups.html"  class="nav-link active"><i class="fas fa-layer-group"></i> Топтар</a>
+        <a href="results.html" class="nav-link"><i class="fas fa-chart-bar"></i> Нәтижелер</a>
+    </nav>
+    <div class="sidebar-footer">
+        <a href="../index.html" class="nav-link"><i class="fas fa-home"></i> Сайтқа қайту</a>
+        <a href="#" onclick="logoutUser()" class="nav-link" style="color:#fd79a8"><i class="fas fa-sign-out-alt"></i> Шығу</a>
+    </div>
+</div>
+
+<!-- Main wrapper -->
+<div class="admin-main-wrapper">
+
+    <nav class="navbar bg-white shadow-sm px-3 px-lg-4 sticky-top" style="z-index:999">
+        <button class="btn btn-link d-lg-none p-0 text-dark me-2" data-bs-toggle="offcanvas" data-bs-target="#adminSidebar">
+            <i class="fas fa-bars fa-lg"></i>
+        </button>
+        <h6 class="mb-0 fw-bold">Топтарды басқару</h6>
+        <div class="ms-auto d-flex align-items-center gap-2">
+            <div class="avatar-circle" id="admin-avatar">A</div>
+            <span class="fw-semibold small d-none d-sm-inline" id="admin-name"></span>
+        </div>
+    </nav>
+
+    <div class="p-3 p-lg-4">
+
+        <!-- Stats row -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm text-center p-3" style="border-radius:1rem">
+                    <div class="fs-2 fw-bold text-primary" id="stat-groups">—</div>
+                    <div class="text-muted small">Топтар</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm text-center p-3" style="border-radius:1rem">
+                    <div class="fs-2 fw-bold text-success" id="stat-members">—</div>
+                    <div class="text-muted small">Жалпы мүшелер</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm text-center p-3" style="border-radius:1rem">
+                    <div class="fs-2 fw-bold text-warning" id="stat-assigned">—</div>
+                    <div class="text-muted small">Тест тапсырмасы</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm text-center p-3" style="border-radius:1rem">
+                    <div class="fs-2 fw-bold text-info" id="stat-users-total">—</div>
+                    <div class="text-muted small">Барлық юзерлер</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Groups table -->
+        <div class="card border-0 shadow-sm" style="border-radius:1rem">
+            <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center pt-3 pb-2 px-4" style="border-radius:1rem 1rem 0 0">
+                <h6 class="fw-bold mb-0"><i class="fas fa-layer-group text-primary me-2"></i>Барлық топтар</h6>
+                <button class="btn btn-primary rounded-pill fw-semibold px-3" onclick="openModal()">
+                    <i class="fas fa-plus me-1"></i>Жаңа топ
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Топ атауы</th>
+                            <th>Мүшелер</th>
+                            <th>Тесттер</th>
+                            <th>Жасалды</th>
+                            <th>Әрекет</th>
+                        </tr>
+                    </thead>
+                    <tbody id="groups-body">
+                        <tr><td colspan="5" class="text-center py-4 text-muted">
+                            <span class="spinner-border spinner-border-sm me-2"></span>Жүктелуде...
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Group Modal -->
+<div class="modal fade" id="groupModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="border-radius:1rem;overflow:hidden">
+            <div class="modal-header text-white border-0" style="background:var(--quiz-gradient)">
+                <h5 class="modal-title fw-bold" id="groupModalTitle">
+                    <i class="fas fa-plus-circle me-2"></i>Жаңа топ
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="group-form" onsubmit="saveGroup(event)">
+                    <input type="hidden" id="g-edit-id">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Топ атауы *</label>
+                        <input type="text" id="g-name" class="form-control" placeholder="Мысалы: Физика 10-А сыныбы" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Сипаттамасы</label>
+                        <input type="text" id="g-desc" class="form-control" placeholder="Топ туралы қысқаша (міндетті емес)">
+                    </div>
+
+                    <!-- Tabs -->
+                    <ul class="nav nav-tabs mb-3" id="groupTabs">
+                        <li class="nav-item">
+                            <button type="button" class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-members">
+                                <i class="fas fa-users me-1"></i>Мүшелер
+                                <span class="badge bg-primary ms-1" id="badge-members">0</span>
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button type="button" class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-quizzes">
+                                <i class="fas fa-clipboard-list me-1"></i>Тесттер
+                                <span class="badge bg-success ms-1" id="badge-quizzes">0</span>
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <!-- Members tab -->
+                        <div class="tab-pane fade show active" id="tab-members">
+                            <div class="input-group mb-2">
+                                <span class="input-group-text bg-white border-end-0">
+                                    <i class="fas fa-search text-muted"></i>
+                                </span>
+                                <input type="text" id="member-search" class="form-control border-start-0"
+                                    placeholder="Пайдаланушыны іздеу..." oninput="filterMembers()">
+                            </div>
+                            <div id="member-list" class="border rounded-3" style="max-height:220px;overflow-y:auto">
+                                <div class="text-muted small text-center py-3">
+                                    <span class="spinner-border spinner-border-sm me-1"></span>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between mt-2">
+                                <small class="text-muted" id="members-selected-count">0 таңдалды</small>
+                                <div class="d-flex gap-3">
+                                    <button type="button" class="btn btn-link btn-sm p-0 text-primary" onclick="selectAllMembers()">Барлығы</button>
+                                    <button type="button" class="btn btn-link btn-sm p-0 text-secondary" onclick="deselectAllMembers()">Болдырмау</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quizzes tab -->
+                        <div class="tab-pane fade" id="tab-quizzes">
+                            <div id="quiz-assign-list" class="border rounded-3" style="max-height:220px;overflow-y:auto">
+                                <div class="text-muted small text-center py-3">
+                                    <span class="spinner-border spinner-border-sm me-1"></span>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between mt-2">
+                                <small class="text-muted" id="quizzes-selected-count">0 таңдалды</small>
+                                <div class="d-flex gap-3">
+                                    <button type="button" class="btn btn-link btn-sm p-0 text-primary" onclick="selectAllQuizzes()">Барлығы</button>
+                                    <button type="button" class="btn btn-link btn-sm p-0 text-secondary" onclick="deselectAllQuizzes()">Болдырмау</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary fw-semibold flex-fill rounded-pill" id="group-save-btn">
+                            <i class="fas fa-save me-1"></i>Сақтау
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">
+                            Бас тарту
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Members view modal -->
+<div class="modal fade" id="viewModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius:1rem;overflow:hidden">
+            <div class="modal-header border-0" style="background:var(--quiz-gradient)">
+                <h5 class="modal-title fw-bold text-white" id="view-modal-title">Топ мүшелері</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" id="view-modal-body"></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let allGroups  = [];
+    let allUsers   = [];
+    let allQuizzes = [];
+    let groupModal, viewModal;
+
+    requireAdmin(async (user, userData) => {
+        const name = userData.name || user.email;
+        document.getElementById('admin-name').textContent = name;
+        document.getElementById('admin-avatar').textContent = name.charAt(0).toUpperCase();
+        groupModal = new bootstrap.Modal(document.getElementById('groupModal'));
+        viewModal  = new bootstrap.Modal(document.getElementById('viewModal'));
+        await Promise.all([loadGroups(), loadUsers(), loadQuizzes()]);
+    });
+
+    // ── Load data ─────────────────────────────────────────────
+
+    async function loadGroups() {
+        const snap = await db.collection('groups').orderBy('createdAt', 'desc').get();
+        allGroups = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderGroups();
+        updateStats();
+    }
+
+    async function loadUsers() {
+        const snap = await db.collection('users').get();
+        allUsers = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (a.name || a.email || '').localeCompare(b.name || b.email || ''));
+        document.getElementById('stat-users-total').textContent = allUsers.length;
+    }
+
+    async function loadQuizzes() {
+        const snap = await db.collection('quizzes').orderBy('title').get();
+        allQuizzes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+
+    function updateStats() {
+        document.getElementById('stat-groups').textContent   = allGroups.length;
+        const totalMembers  = allGroups.reduce((s, g) => s + (g.members || []).length, 0);
+        const totalAssigned = allGroups.reduce((s, g) => s + (g.assignedQuizzes || []).length, 0);
+        document.getElementById('stat-members').textContent  = totalMembers;
+        document.getElementById('stat-assigned').textContent = totalAssigned;
+    }
+
+    // ── Render groups table ───────────────────────────────────
+
+    function renderGroups() {
+        const tbody = document.getElementById('groups-body');
+        if (allGroups.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">Топ жоқ. Жаңа топ жасаңыз!</td></tr>';
+            return;
+        }
+        tbody.innerHTML = allGroups.map(g => `
+            <tr>
+                <td>
+                    <div class="fw-semibold">${g.name}</div>
+                    ${g.description ? `<div class="text-muted small">${g.description}</div>` : ''}
+                </td>
+                <td>
+                    <span class="badge bg-primary rounded-pill" role="button"
+                          onclick="viewMembers('${g.id}')" title="Мүшелерді көру">
+                        <i class="fas fa-users me-1"></i>${(g.members || []).length} адам
+                    </span>
+                </td>
+                <td>
+                    <span class="badge bg-success rounded-pill" role="button"
+                          onclick="viewQuizzes('${g.id}')" title="Тесттерді көру">
+                        <i class="fas fa-clipboard-list me-1"></i>${(g.assignedQuizzes || []).length} тест
+                    </span>
+                </td>
+                <td class="text-muted small">${formatDate(g.createdAt)}</td>
+                <td>
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-sm btn-outline-primary rounded-2" onclick="openModal('${g.id}')" title="Өңдеу">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger rounded-2" onclick="deleteGroup('${g.id}', '${g.name.replace(/'/g,"\\'")}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    // ── Open / populate modal ─────────────────────────────────
+
+    function openModal(groupId) {
+        document.getElementById('member-search').value = '';
+        const titleEl = document.getElementById('groupModalTitle');
+
+        if (groupId) {
+            const g = allGroups.find(x => x.id === groupId);
+            titleEl.innerHTML = '<i class="fas fa-edit me-2"></i>Топты өңдеу';
+            document.getElementById('g-edit-id').value = groupId;
+            document.getElementById('g-name').value    = g.name || '';
+            document.getElementById('g-desc').value    = g.description || '';
+            renderMemberList(g.members || []);
+            renderQuizList(g.assignedQuizzes || []);
+        } else {
+            titleEl.innerHTML = '<i class="fas fa-plus-circle me-2"></i>Жаңа топ';
+            document.getElementById('g-edit-id').value = '';
+            document.getElementById('group-form').reset();
+            renderMemberList([]);
+            renderQuizList([]);
+        }
+
+        // Reset to first tab
+        bootstrap.Tab.getOrCreateInstance(
+            document.querySelector('#groupTabs .nav-link.active') ||
+            document.querySelector('#groupTabs .nav-link')
+        );
+        groupModal.show();
+    }
+
+    // ── Member list ───────────────────────────────────────────
+
+    function renderMemberList(selectedUids, filter = '') {
+        const filtered = filter
+            ? allUsers.filter(u => (u.name || u.email || '').toLowerCase().includes(filter.toLowerCase()))
+            : allUsers;
+
+        const container = document.getElementById('member-list');
+        if (filtered.length === 0) {
+            container.innerHTML = '<div class="text-muted small text-center py-3">Табылмады</div>';
+        } else {
+            container.innerHTML = filtered.map(u => `
+                <div class="d-flex align-items-center gap-2 p-2 border-bottom hover-bg">
+                    <input class="form-check-input member-cb flex-shrink-0" type="checkbox"
+                           id="mcb-${u.id}" value="${u.id}"
+                           ${selectedUids.includes(u.id) ? 'checked' : ''}
+                           onchange="updateMemberCount()">
+                    <label class="d-flex align-items-center gap-2 w-100 mb-0" for="mcb-${u.id}" style="cursor:pointer">
+                        <div class="avatar-circle flex-shrink-0" style="width:28px;height:28px;font-size:11px">
+                            ${(u.name || u.email || '?').charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <div class="fw-semibold" style="font-size:13px">${u.name || '—'}</div>
+                            <div class="text-muted" style="font-size:11px">${u.email || ''}</div>
+                        </div>
+                        ${u.role === 'admin' ? '<span class="badge bg-warning text-dark ms-auto" style="font-size:10px">Admin</span>' : ''}
+                    </label>
+                </div>
+            `).join('');
+        }
+        updateMemberCount();
+    }
+
+    function filterMembers() {
+        const filter   = document.getElementById('member-search').value;
+        const selected = getChecked('.member-cb');
+        renderMemberList(selected, filter);
+    }
+
+    function updateMemberCount() {
+        const n = getChecked('.member-cb').length;
+        document.getElementById('badge-members').textContent          = n;
+        document.getElementById('members-selected-count').textContent = n + ' таңдалды';
+    }
+
+    function selectAllMembers()   { setAll('.member-cb', true);  updateMemberCount(); }
+    function deselectAllMembers() { setAll('.member-cb', false); updateMemberCount(); }
+
+    // ── Quiz list ─────────────────────────────────────────────
+
+    function renderQuizList(selectedIds) {
+        const container = document.getElementById('quiz-assign-list');
+        if (allQuizzes.length === 0) {
+            container.innerHTML = '<div class="text-muted small text-center py-3">Тест жоқ</div>';
+        } else {
+            container.innerHTML = allQuizzes.map(q => `
+                <div class="d-flex align-items-center gap-2 p-2 border-bottom">
+                    <input class="form-check-input quiz-cb flex-shrink-0" type="checkbox"
+                           id="qcb-${q.id}" value="${q.id}"
+                           ${selectedIds.includes(q.id) ? 'checked' : ''}
+                           onchange="updateQuizCount()">
+                    <label class="d-flex align-items-center gap-2 w-100 mb-0" for="qcb-${q.id}" style="cursor:pointer">
+                        <div class="stat-icon-box flex-shrink-0" style="width:28px;height:28px;border-radius:6px;font-size:11px;background:${q.color || 'var(--quiz-gradient)'}">
+                            <i class="${q.icon || 'fas fa-clipboard-list'}"></i>
+                        </div>
+                        <div>
+                            <div class="fw-semibold" style="font-size:13px">${q.title}</div>
+                            <div class="text-muted" style="font-size:11px">${q.questionCount || 0} сұрақ</div>
+                        </div>
+                        <span class="badge ${q.isActive ? 'bg-success' : 'bg-secondary'} ms-auto" style="font-size:10px">
+                            ${q.isActive ? 'Белсенді' : 'Өшірулі'}
+                        </span>
+                    </label>
+                </div>
+            `).join('');
+        }
+        updateQuizCount();
+    }
+
+    function updateQuizCount() {
+        const n = getChecked('.quiz-cb').length;
+        document.getElementById('badge-quizzes').textContent          = n;
+        document.getElementById('quizzes-selected-count').textContent = n + ' таңдалды';
+    }
+
+    function selectAllQuizzes()   { setAll('.quiz-cb', true);  updateQuizCount(); }
+    function deselectAllQuizzes() { setAll('.quiz-cb', false); updateQuizCount(); }
+
+    // ── Save group ────────────────────────────────────────────
+
+    async function saveGroup(e) {
+        e.preventDefault();
+        const btn = document.getElementById('group-save-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Сақталуда...';
+
+        const data = {
+            name:           document.getElementById('g-name').value.trim(),
+            description:    document.getElementById('g-desc').value.trim(),
+            members:        getChecked('.member-cb'),
+            assignedQuizzes: getChecked('.quiz-cb')
+        };
+
+        try {
+            const editId = document.getElementById('g-edit-id').value;
+            if (editId) {
+                await db.collection('groups').doc(editId).update(data);
+                showToast('Топ жаңартылды ✓', 'success');
+            } else {
+                await db.collection('groups').add({
+                    ...data,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    createdBy: auth.currentUser.uid
+                });
+                showToast('Жаңа топ жасалды ✓', 'success');
+            }
+            groupModal.hide();
+            await loadGroups();
+        } catch (err) {
+            console.error(err);
+            showToast('Сақтау кезінде қате орын алды', 'error');
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save me-1"></i>Сақтау';
+    }
+
+    async function deleteGroup(groupId, name) {
+        if (!confirm(`"${name}" тобын жою керек пе?`)) return;
+        try {
+            await db.collection('groups').doc(groupId).delete();
+            showToast('Топ жойылды', 'success');
+            await loadGroups();
+        } catch (err) {
+            console.error(err);
+            showToast('Қате орын алды', 'error');
+        }
+    }
+
+    // ── View members / quizzes popup ──────────────────────────
+
+    function viewMembers(groupId) {
+        const g       = allGroups.find(x => x.id === groupId);
+        const members = (g.members || []).map(uid => allUsers.find(u => u.id === uid)).filter(Boolean);
+        document.getElementById('view-modal-title').textContent = `${g.name} — Мүшелері`;
+        document.getElementById('view-modal-body').innerHTML = members.length === 0
+            ? '<p class="text-muted text-center">Мүше жоқ</p>'
+            : members.map(u => `
+                <div class="d-flex align-items-center gap-2 py-2 border-bottom">
+                    <div class="avatar-circle" style="width:32px;height:32px;font-size:12px">
+                        ${(u.name || u.email || '?').charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                        <div class="fw-semibold small">${u.name || '—'}</div>
+                        <div class="text-muted" style="font-size:11px">${u.email || ''}</div>
+                    </div>
+                    ${u.role === 'admin' ? '<span class="badge bg-warning text-dark ms-auto">Admin</span>' : ''}
+                </div>`).join('');
+        viewModal.show();
+    }
+
+    function viewQuizzes(groupId) {
+        const g       = allGroups.find(x => x.id === groupId);
+        const quizzes = (g.assignedQuizzes || []).map(qid => allQuizzes.find(q => q.id === qid)).filter(Boolean);
+        document.getElementById('view-modal-title').textContent = `${g.name} — Тесттер`;
+        document.getElementById('view-modal-body').innerHTML = quizzes.length === 0
+            ? '<p class="text-muted text-center">Тест тапсырылмаған</p>'
+            : quizzes.map(q => `
+                <div class="d-flex align-items-center gap-2 py-2 border-bottom">
+                    <div class="stat-icon-box flex-shrink-0" style="width:32px;height:32px;border-radius:8px;font-size:12px;background:${q.color || 'var(--quiz-gradient)'}">
+                        <i class="${q.icon || 'fas fa-clipboard-list'}"></i>
+                    </div>
+                    <div>
+                        <div class="fw-semibold small">${q.title}</div>
+                        <div class="text-muted" style="font-size:11px">${q.questionCount || 0} сұрақ</div>
+                    </div>
+                </div>`).join('');
+        viewModal.show();
+    }
+
+    // ── Util ─────────────────────────────────────────────────
+
+    function getChecked(selector) {
+        return Array.from(document.querySelectorAll(selector + ':checked')).map(el => el.value);
+    }
+    function setAll(selector, checked) {
+        document.querySelectorAll(selector).forEach(el => el.checked = checked);
+    }
+</script>
+</body>
+</html>

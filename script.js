@@ -1,262 +1,311 @@
+// ================================================================
+// QUIZ ENGINE — Firestore + Bootstrap 5
+// ================================================================
+
 const urlParams = new URLSearchParams(window.location.search);
-const topic = urlParams.get('topic');
+const quizId    = urlParams.get('id');
 
-let currentQuestions = [];
-let quizTitle = "";
+let quiz = null, questions = [], currentIndex = 0, score = 0;
+let userHistory = [], startTime = null, timerInterval = null;
+let currentUser = null, currentUserData = null;
 
-if (allTests[topic]) {
-    currentQuestions = allTests[topic];
-    if (topic === 'os') quizTitle = "Операциялық жүйелер";
-    else if (topic === 'algo') quizTitle = "Алгоритмдеу";
-    else if (topic === 'math') quizTitle = "Ықтималдық теориясы";
-    else if (topic === 'java') quizTitle = "Java Programming";
-    else if (topic === 'sysadmin') quizTitle = "Сис. Админ";
-} else {
-    alert("Тест табылған жоқ!");
-    window.location.href = "index.html";
-}
-
-// АЙНЫМАЛЫЛАР
-let currentQuestionIndex = 0;
-let score = 0;
-const totalQuestions = currentQuestions.length;
-let isMultiSelect = false;
-
-// ТАРИХ (Жауаптарды сақтау үшін)
-let userHistory = new Array(totalQuestions).fill(null);
-
-// Элементтер
-const quizScreen = document.getElementById('quiz-screen');
-const resultScreen = document.getElementById('result-screen');
-const titleEl = document.getElementById('quiz-title');
-const questionText = document.getElementById('question-text');
-const optionsList = document.getElementById('options-list');
+// DOM refs
+const titleEl       = document.getElementById('quiz-title');
+const questionText  = document.getElementById('question-text');
+const optionsList   = document.getElementById('options-list');
 const questionCount = document.getElementById('question-count');
-const progressBar = document.getElementById('progress-bar');
-const imgEl = document.getElementById('question-img');
-const jumpInput = document.getElementById('jump-input');
+const progressBar   = document.getElementById('progress-bar');
+const imgEl         = document.getElementById('question-img');
+const jumpInput     = document.getElementById('jump-input');
+const prevBtn       = document.getElementById('prev-btn');
+const nextBtn       = document.getElementById('next-btn');
+const checkBtn      = document.getElementById('check-btn');
+const timerDisplay  = document.getElementById('timer-display');
+const timerText     = document.getElementById('timer-text');
+const savingOverlay = document.getElementById('saving-overlay');
 
-// Батырмалар
-const prevBtn = document.getElementById('prev-btn');
-const nextBtn = document.getElementById('next-btn');
-const checkBtn = document.getElementById('check-btn');
-
-const scoreText = document.getElementById('score-text');
-const totalText = document.getElementById('total-text');
-const feedbackText = document.getElementById('feedback-text');
-
-titleEl.innerText = quizTitle;
-
-function shuffleArray(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-    }
-    return array;
+if (!quizId) {
+    window.location.href = 'index.html';
+} else {
+    requireAuth(async (user, userData) => {
+        currentUser     = user;
+        currentUserData = userData;
+        await loadQuiz();
+    });
 }
 
-// СҰРАҚТЫ ЖҮКТЕУ
-function loadQuestion() {
-    const data = currentQuestions[currentQuestionIndex];
+// ── Load quiz from Firestore ───────────────────────────────────
 
-    questionText.innerText = `${currentQuestionIndex + 1}. ${data.question}`;
-    questionCount.innerText = `Сұрақ ${currentQuestionIndex + 1} / ${totalQuestions}`;
-    
-    // Сурет
-    if (data.img) {
-        imgEl.src = data.img;
-        imgEl.style.display = 'block';
-    } else {
-        imgEl.style.display = 'none';
-        imgEl.src = "";
+async function loadQuiz() {
+    try {
+        const quizDoc = await db.collection('quizzes').doc(quizId).get();
+        if (!quizDoc.exists || !quizDoc.data().isActive) {
+            showToast('Тест табылмады немесе белсенді емес', 'error');
+            setTimeout(() => window.location.href = 'index.html', 1500);
+            return;
+        }
+        quiz = { id: quizDoc.id, ...quizDoc.data() };
+
+        // Access check: if restricted, verify user is in allowedUsers
+        if (quiz.accessType === 'restricted') {
+            const allowed = Array.isArray(quiz.allowedUsers) ? quiz.allowedUsers : [];
+            if (!allowed.includes(currentUser.uid)) {
+                showToast('Бұл тестке рұқсатыңыз жоқ', 'error');
+                setTimeout(() => window.location.href = 'index.html', 1800);
+                return;
+            }
+        }
+
+        titleEl.textContent  = quiz.title;
+        document.title       = quiz.title;
+
+        const qSnap = await db.collection('quizzes').doc(quizId)
+            .collection('questions').orderBy('order').get();
+
+        questions = qSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        if (questions.length === 0) {
+            showToast('Бұл тестте сұрақтар жоқ', 'error');
+            setTimeout(() => window.location.href = 'index.html', 1500);
+            return;
+        }
+
+        if (quiz.randomOrder) shuffleArray(questions);
+
+        // Pre-shuffle options once per question
+        questions.forEach(q => {
+            const isMulti = Array.isArray(q.correct);
+            const opts = q.options.map((text, idx) => ({
+                text,
+                isCorrect: isMulti ? q.correct.includes(idx) : idx === q.correct
+            }));
+            q.shuffledOptions = shuffleArray([...opts]);
+        });
+
+        userHistory = new Array(questions.length).fill(null);
+        startTime   = Date.now();
+
+        if (quiz.timeLimit > 0) startTimer(quiz.timeLimit * 60);
+
+        loadQuestion();
+    } catch (err) {
+        console.error(err);
+        showToast('Деректерді жүктеу қатесі', 'error');
     }
+}
 
-    // Прогресс
-    const progressPercent = ((currentQuestionIndex + 1) / totalQuestions) * 100;
-    progressBar.style.width = `${progressPercent}%`;
+// ── Timer ──────────────────────────────────────────────────────
 
-    optionsList.innerHTML = '';
-    
-    // Батырмалардың көрінуі
-    prevBtn.style.display = currentQuestionIndex > 0 ? 'block' : 'none';
-    nextBtn.style.display = 'none';
+function startTimer(totalSeconds) {
+    let remaining = totalSeconds;
+    timerDisplay.style.display = 'inline-flex';
+    updateTimerDisplay(remaining);
+
+    timerInterval = setInterval(() => {
+        remaining--;
+        updateTimerDisplay(remaining);
+        if (remaining <= 60) timerDisplay.classList.add('urgent');
+        if (remaining <= 0) {
+            clearInterval(timerInterval);
+            showToast('Уақыт бітті! Нәтиже сақталуда...', 'info');
+            finishQuiz();
+        }
+    }, 1000);
+}
+
+function updateTimerDisplay(s) {
+    timerText.textContent =
+        `${Math.floor(s / 60).toString().padStart(2,'0')}:${(s % 60).toString().padStart(2,'0')}`;
+}
+
+// ── Render question ────────────────────────────────────────────
+
+const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
+
+function loadQuestion() {
+    const data  = questions[currentIndex];
+    const total = questions.length;
+    const isMulti = Array.isArray(data.correct);
+
+    questionText.textContent  = `${currentIndex + 1}. ${data.question}`;
+    questionCount.textContent = `Сұрақ ${currentIndex + 1} / ${total}`;
+    progressBar.style.width   = `${((currentIndex + 1) / total) * 100}%`;
+
+    imgEl.style.display = data.img ? 'block' : 'none';
+    if (data.img) imgEl.src = data.img;
+
+    prevBtn.style.display  = currentIndex > 0 ? '' : 'none';
+    nextBtn.style.display  = 'none';
     checkBtn.style.display = 'none';
 
-    isMultiSelect = Array.isArray(data.correct);
+    optionsList.innerHTML = '';
 
-    // Жауаптарды дайындау (егер бұрын араласпаған болса)
-    if (!data.shuffledOptions) {
-        let answers = data.options.map((opt, index) => {
-            let correctStatus = isMultiSelect ? data.correct.includes(index) : index === data.correct;
-            return { text: opt, isCorrect: correctStatus };
-        });
-        data.shuffledOptions = shuffleArray(answers);
-    }
-
-    // Жауаптарды шығару
-    data.shuffledOptions.forEach((answerObj, uiIndex) => {
+    data.shuffledOptions.forEach((opt, uiIdx) => {
         const div = document.createElement('div');
-        div.className = 'option-item';
-        div.innerHTML = `<span class="circle"></span> ${answerObj.text}`;
-        
-        div.dataset.isCorrect = answerObj.isCorrect;
-        div.dataset.uiIndex = uiIndex;
-
-        div.onclick = () => selectOption(div, uiIndex);
+        div.className = 'option-item d-flex align-items-center gap-3 p-3';
+        div.innerHTML = `<span class="option-letter">${OPTION_LETTERS[uiIdx] || (uiIdx + 1)}</span><span class="option-text flex-grow-1">${opt.text}</span>`;
+        div.dataset.isCorrect = opt.isCorrect;
+        div.dataset.uiIndex   = uiIdx;
+        div.onclick = () => selectOption(div, uiIdx, isMulti);
         optionsList.appendChild(div);
     });
 
-    // Тарихты тексеру (Егер жауап берілген болса, қалпына келтіру)
-    const history = userHistory[currentQuestionIndex];
-    if (history && history.answered) {
-        restoreState(history);
-    } else {
-        if (isMultiSelect) checkBtn.style.display = 'block';
-    }
+    const history = userHistory[currentIndex];
+    if (history?.answered) restoreState(history);
+    else if (isMulti) checkBtn.style.display = '';
 }
 
-// ТАРИХТАН ҚАЛПЫНА КЕЛТІРУ
 function restoreState(history) {
-    const options = optionsList.children;
-    for (let i = 0; i < options.length; i++) {
-        const div = options[i];
-        div.classList.add('disabled');
-        if (history.selectedIndices.includes(i)) {
-            if (div.dataset.isCorrect === "true") div.classList.add('correct');
-            else div.classList.add('wrong');
-        }
-        if (div.dataset.isCorrect === "true") div.classList.add('correct');
+    const opts = optionsList.children;
+    for (let i = 0; i < opts.length; i++) {
+        opts[i].classList.add('disabled');
+        if (opts[i].dataset.isCorrect === 'true') opts[i].classList.add('correct');
+        if (history.selectedIndices.includes(i) && opts[i].dataset.isCorrect !== 'true')
+            opts[i].classList.add('wrong');
     }
-    nextBtn.style.display = 'block';
     checkBtn.style.display = 'none';
+    nextBtn.style.display  = '';
 }
 
-// ТАҢДАУ
-function selectOption(selectedDiv, uiIndex) {
-    if (selectedDiv.classList.contains('disabled')) return;
+// ── Select ─────────────────────────────────────────────────────
 
-    if (isMultiSelect) {
-        selectedDiv.classList.toggle('selected');
-        if(selectedDiv.classList.contains('selected')) {
-            selectedDiv.style.backgroundColor = "#eef2ff";
-            selectedDiv.style.borderColor = "#667eea";
-            selectedDiv.querySelector('.circle').style.backgroundColor = "#667eea";
-        } else {
-            selectedDiv.style.backgroundColor = "";
-            selectedDiv.style.borderColor = "";
-            selectedDiv.querySelector('.circle').style.backgroundColor = "";
-        }
+function selectOption(div, uiIdx, isMulti) {
+    if (div.classList.contains('disabled')) return;
+    if (isMulti) {
+        div.classList.toggle('selected');
     } else {
-        checkSingleAnswer(selectedDiv, uiIndex);
+        checkSingleAnswer(div, uiIdx);
     }
 }
 
-// БІР ЖАУАПТЫ ТЕКСЕРУ
-function checkSingleAnswer(selectedDiv, uiIndex) {
-    const isCorrect = selectedDiv.dataset.isCorrect === "true";
+function checkSingleAnswer(div, uiIdx) {
+    const isCorrect = div.dataset.isCorrect === 'true';
     if (isCorrect) score++;
 
-    userHistory[currentQuestionIndex] = { answered: true, selectedIndices: [uiIndex] };
-
-    const options = optionsList.children;
-    for (let i = 0; i < options.length; i++) {
-        options[i].classList.add('disabled');
-        if (options[i].dataset.isCorrect === "true") options[i].classList.add('correct');
+    const opts = optionsList.children;
+    for (let i = 0; i < opts.length; i++) {
+        opts[i].classList.add('disabled');
+        if (opts[i].dataset.isCorrect === 'true') opts[i].classList.add('correct');
     }
+    if (!isCorrect) div.classList.add('wrong');
 
-    if (isCorrect) selectedDiv.classList.add('correct');
-    else selectedDiv.classList.add('wrong');
-
-    nextBtn.style.display = 'block';
+    userHistory[currentIndex] = { answered: true, selectedIndices: [uiIdx], isCorrect };
+    nextBtn.style.display = '';
 }
 
-// КӨП ЖАУАПТЫ ТЕКСЕРУ
 function checkMultiAnswer() {
-    const options = optionsList.children;
-    let allCorrectFound = true;
-    let noWrongSelected = true;
-    let selectedIndices = [];
+    const opts = optionsList.children;
+    let allCorrect = true, noWrong = true;
+    const selectedIndices = [];
 
-    for (let i = 0; i < options.length; i++) {
-        const div = options[i];
-        const isSelected = div.classList.contains('selected');
-        const isActuallyCorrect = div.dataset.isCorrect === "true";
+    for (let i = 0; i < opts.length; i++) {
+        const sel     = opts[i].classList.contains('selected');
+        const correct = opts[i].dataset.isCorrect === 'true';
+        if (sel) selectedIndices.push(i);
 
-        if (isSelected) selectedIndices.push(i);
-        div.classList.add('disabled');
-        div.style.backgroundColor = "";
-        div.style.borderColor = "";
-        div.querySelector('.circle').style.backgroundColor = "";
+        opts[i].classList.add('disabled');
+        opts[i].classList.remove('selected');
 
-        if (isActuallyCorrect) {
-            div.classList.add('correct');
-            if (!isSelected) allCorrectFound = false;
+        if (correct) {
+            opts[i].classList.add('correct');
+            if (!sel) allCorrect = false;
         }
-        if (isSelected && !isActuallyCorrect) {
-            div.classList.add('wrong');
-            noWrongSelected = false;
+        if (sel && !correct) {
+            opts[i].classList.add('wrong');
+            noWrong = false;
         }
     }
 
-    if (allCorrectFound && noWrongSelected) score++;
+    const isCorrect = allCorrect && noWrong;
+    if (isCorrect) score++;
 
-    userHistory[currentQuestionIndex] = { answered: true, selectedIndices: selectedIndices };
-    
+    userHistory[currentIndex] = { answered: true, selectedIndices, isCorrect };
     checkBtn.style.display = 'none';
-    nextBtn.style.display = 'block';
+    nextBtn.style.display  = '';
 }
 
-// НАВИГАЦИЯ
+// ── Navigation ─────────────────────────────────────────────────
+
 function nextQuestion() {
-    if (currentQuestionIndex < totalQuestions - 1) {
-        currentQuestionIndex++;
-        loadQuestion();
-    } else {
-        showResults();
-    }
+    currentIndex < questions.length - 1 ? (currentIndex++, loadQuestion()) : finishQuiz();
 }
 
 function prevQuestion() {
-    if (currentQuestionIndex > 0) {
-        currentQuestionIndex--;
-        loadQuestion();
-    }
+    if (currentIndex > 0) { currentIndex--; loadQuestion(); }
 }
 
 function jumpToQuestion() {
     const val = parseInt(jumpInput.value);
-    if (val >= 1 && val <= totalQuestions) {
-        currentQuestionIndex = val - 1;
+    if (val >= 1 && val <= questions.length) {
+        currentIndex = val - 1;
         loadQuestion();
-        jumpInput.value = "";
+        jumpInput.value = '';
     } else {
-        alert("Дұрыс сан енгізіңіз (1-" + totalQuestions + ")");
+        showToast(`1–${questions.length} аралығында сан енгізіңіз`, 'error');
     }
 }
 
-// Enter пернесі
-jumpInput.addEventListener("keypress", function(event) {
-    if (event.key === "Enter") jumpToQuestion();
-});
+jumpInput.addEventListener('keypress', e => { if (e.key === 'Enter') jumpToQuestion(); });
 
-// НӘТИЖЕ
-function showResults() {
-    quizScreen.style.display = 'none';
-    resultScreen.style.display = 'block';
-    scoreText.innerText = score;
-    totalText.innerText = totalQuestions;
+// ── Save & redirect ────────────────────────────────────────────
 
-    const percentage = (score / totalQuestions) * 100;
-    if (percentage === 100) {
-        feedbackText.innerText = "Керемет! Барлығы дұрыс! 🥇";
-        feedbackText.style.color = "green";
-    } else if (percentage >= 70) {
-        feedbackText.innerText = "Жақсы нәтиже! 👍";
-        feedbackText.style.color = "blue";
-    } else {
-        feedbackText.innerText = "Тағы да дайындалу керек. 📚";
-        feedbackText.style.color = "orange";
+async function finishQuiz() {
+    clearInterval(timerInterval);
+    savingOverlay.style.display = 'flex';
+
+    const timeTaken  = Math.floor((Date.now() - startTime) / 1000);
+    const total      = questions.length;
+    const percentage = Math.round((score / total) * 100);
+
+    const answers = questions.map((q, i) => {
+        const h = userHistory[i];
+        return {
+            questionId:     q.id,
+            question:       q.question,
+            options:        q.shuffledOptions.map(o => o.text),
+            correctIndices: q.shuffledOptions.reduce((a, o, idx) => { if (o.isCorrect) a.push(idx); return a; }, []),
+            selectedIndices: h ? h.selectedIndices : [],
+            isCorrect:       h ? h.isCorrect : false
+        };
+    });
+
+    try {
+        const userName  = currentUserData.name || currentUser.email;
+        const resultRef = await db.collection('results').add({
+            userId: currentUser.uid, userName,
+            userEmail: currentUser.email,
+            quizId, quizTitle: quiz.title,
+            score, total, percentage, timeTaken, answers,
+            completedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Personal best leaderboard
+        const docId = `${quizId}_${currentUser.uid}`;
+        const lbRef = db.collection('leaderboard').doc(docId);
+        const ex    = await lbRef.get();
+        const better = !ex.exists || percentage > ex.data().percentage
+            || (percentage === ex.data().percentage && timeTaken < ex.data().timeTaken);
+        if (better) await lbRef.set({
+            userId: currentUser.uid, userName,
+            quizId, quizTitle: quiz.title,
+            score, total, percentage, timeTaken,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        window.location.href = `results.html?id=${resultRef.id}`;
+    } catch (err) {
+        console.error(err);
+        savingOverlay.style.display = 'none';
+        showToast('Сақтау кезінде қате орын алды', 'error');
     }
 }
 
-loadQuestion();
+// ── Util ───────────────────────────────────────────────────────
+
+function shuffleArray(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}

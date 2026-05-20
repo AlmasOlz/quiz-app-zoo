@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кіру — Quiz Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            background: #f1f5f9;
+            padding: 0;
+            align-items: stretch;
+        }
+        /* ── Left branding panel ── */
+        .login-panel-left {
+            background: var(--quiz-gradient);
+            flex: 1 1 45%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 56px 48px;
+            position: relative;
+            overflow: hidden;
+            min-height: 100vh;
+        }
+        .login-panel-left .deco {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255,255,255,.08);
+        }
+        .login-panel-left .deco-1 { width:420px; height:420px; top:-120px; right:-130px; }
+        .login-panel-left .deco-2 { width:280px; height:280px; bottom:-80px; left:-60px; }
+        .login-panel-left .deco-3 { width:120px; height:120px; top:30%; left:10%; animation: float 7s ease-in-out infinite; }
+        .login-brand-icon {
+            width: 80px; height: 80px;
+            background: rgba(255,255,255,.18);
+            border-radius: 24px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 36px; color: white;
+            margin-bottom: 28px;
+            backdrop-filter: blur(8px);
+            border: 1.5px solid rgba(255,255,255,.25);
+            box-shadow: 0 8px 32px rgba(0,0,0,.15);
+            position: relative; z-index: 1;
+        }
+        .login-panel-left h1 {
+            font-size: 2.2rem; font-weight: 800;
+            color: white; margin-bottom: 10px;
+            position: relative; z-index: 1;
+        }
+        .login-panel-left .subtitle {
+            color: rgba(255,255,255,.75);
+            font-size: 15px; margin-bottom: 44px;
+            position: relative; z-index: 1;
+            text-align: center; max-width: 320px;
+        }
+        .feature-list {
+            list-style: none; padding: 0; margin: 0;
+            position: relative; z-index: 1;
+            width: 100%; max-width: 340px;
+        }
+        .feature-list li {
+            display: flex; align-items: center; gap: 14px;
+            color: rgba(255,255,255,.88);
+            font-size: 14px; font-weight: 500;
+            padding: 11px 16px;
+            background: rgba(255,255,255,.1);
+            border-radius: 12px; margin-bottom: 10px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,.12);
+        }
+        .feature-list li .f-icon {
+            width: 36px; height: 36px;
+            background: rgba(255,255,255,.18);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 15px; flex-shrink: 0;
+        }
+        /* ── Right form panel ── */
+        .login-panel-right {
+            flex: 0 0 420px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 48px 44px;
+            background: white;
+            min-height: 100vh;
+            box-shadow: -4px 0 40px rgba(102,126,234,.10);
+        }
+        .login-panel-right .form-wrap { width: 100%; max-width: 340px; }
+        .login-panel-right h2 { font-weight: 800; font-size: 1.65rem; margin-bottom: 6px; }
+        .login-panel-right p.sub { color: #64748b; font-size: 14px; margin-bottom: 28px; }
+        /* Responsive */
+        @media (max-width: 900px) {
+            body { flex-direction: column; align-items: center; justify-content: center;
+                   background: var(--quiz-gradient); }
+            .login-panel-left { display: none; }
+            .login-panel-right {
+                flex: none; width: 100%; max-width: 440px;
+                min-height: unset; border-radius: 20px;
+                box-shadow: 0 24px 80px rgba(0,0,0,.20);
+                margin: 24px 16px;
+            }
+        }
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+</head>
+<body>
+<div id="toast-container"></div>
+
+<!-- LEFT BRANDING PANEL -->
+<div class="login-panel-left">
+    <div class="deco deco-1"></div>
+    <div class="deco deco-2"></div>
+    <div class="deco deco-3"></div>
+
+    <div class="login-brand-icon">
+        <i class="fas fa-tasks"></i>
+    </div>
+    <h1>Quiz Platform</h1>
+    <p class="subtitle text-center">Білімді тексеріп, нәтижеңді бақыла және үздіктер арасына кір</p>
+
+    <ul class="feature-list">
+        <li>
+            <div class="f-icon"><i class="fas fa-bolt text-warning"></i></div>
+            <div>
+                <div style="font-size:13px;font-weight:700">Жылдам тесттер</div>
+                <div style="font-size:11px;opacity:.7">Жауаптар бірден тексеріледі</div>
+            </div>
+        </li>
+        <li>
+            <div class="f-icon"><i class="fas fa-chart-line" style="color:#38f9d7"></i></div>
+            <div>
+                <div style="font-size:13px;font-weight:700">Прогресс бақылау</div>
+                <div style="font-size:11px;opacity:.7">Толық статистика мен тарих</div>
+            </div>
+        </li>
+        <li>
+            <div class="f-icon"><i class="fas fa-trophy" style="color:#ffd700"></i></div>
+            <div>
+                <div style="font-size:13px;font-weight:700">Лидерборд</div>
+                <div style="font-size:11px;opacity:.7">Үздік нәтижелер кестесі</div>
+            </div>
+        </li>
+        <li>
+            <div class="f-icon"><i class="fas fa-layer-group" style="color:#a29bfe"></i></div>
+            <div>
+                <div style="font-size:13px;font-weight:700">Топтар</div>
+                <div style="font-size:11px;opacity:.7">Оқушыларды топтарға бөл</div>
+            </div>
+        </li>
+    </ul>
+</div>
+
+<!-- RIGHT FORM PANEL -->
+<div class="login-panel-right">
+    <div class="form-wrap">
+
+        <h2>Қош келдіңіз!</h2>
+        <p class="sub" id="form-subtitle">Жалғастыру үшін кіріңіз</p>
+
+        <!-- Tabs -->
+        <ul class="nav nav-pills nav-fill bg-light rounded-3 p-1 mb-4" id="authTabs">
+            <li class="nav-item">
+                <button class="nav-link active rounded-3 fw-semibold" id="tab-login" onclick="switchTab('login')">
+                    <i class="fas fa-sign-in-alt me-1"></i> Кіру
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link rounded-3 fw-semibold" id="tab-register" onclick="switchTab('register')">
+                    <i class="fas fa-user-plus me-1"></i> Тіркелу
+                </button>
+            </li>
+        </ul>
+
+        <!-- LOGIN FORM -->
+        <form id="login-form" onsubmit="handleLogin(event)">
+            <div class="mb-3">
+                <label class="form-label fw-semibold small text-uppercase text-muted">
+                    <i class="fas fa-envelope me-1"></i> Email
+                </label>
+                <input type="email" class="form-control form-control-lg rounded-3"
+                       id="login-email" placeholder="email@example.com" required autocomplete="email">
+            </div>
+            <div class="mb-4">
+                <label class="form-label fw-semibold small text-uppercase text-muted">
+                    <i class="fas fa-lock me-1"></i> Құпия сөз
+                </label>
+                <div class="input-group">
+                    <input type="password" class="form-control form-control-lg rounded-start-3"
+                           id="login-password" placeholder="••••••••" required autocomplete="current-password">
+                    <button type="button" class="btn btn-outline-secondary" onclick="togglePwd('login-password', this)">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg w-100 rounded-3 fw-semibold" id="login-btn">
+                Кіру <i class="fas fa-arrow-right ms-1"></i>
+            </button>
+        </form>
+
+        <!-- REGISTER FORM -->
+        <form id="register-form" style="display:none" onsubmit="handleRegister(event)">
+            <div class="mb-3">
+                <label class="form-label fw-semibold small text-uppercase text-muted">
+                    <i class="fas fa-user me-1"></i> Аты-жөні
+                </label>
+                <input type="text" class="form-control form-control-lg rounded-3"
+                       id="reg-name" placeholder="Толық атыңыз" required autocomplete="name">
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold small text-uppercase text-muted">
+                    <i class="fas fa-envelope me-1"></i> Email
+                </label>
+                <input type="email" class="form-control form-control-lg rounded-3"
+                       id="reg-email" placeholder="email@example.com" required autocomplete="email">
+            </div>
+            <div class="mb-4">
+                <label class="form-label fw-semibold small text-uppercase text-muted">
+                    <i class="fas fa-lock me-1"></i> Құпия сөз
+                </label>
+                <div class="input-group">
+                    <input type="password" class="form-control form-control-lg rounded-start-3"
+                           id="reg-password" placeholder="Кем дегенде 6 таңба" required minlength="6" autocomplete="new-password">
+                    <button type="button" class="btn btn-outline-secondary" onclick="togglePwd('reg-password', this)">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg w-100 rounded-3 fw-semibold" id="register-btn">
+                Тіркелу <i class="fas fa-user-plus ms-1"></i>
+            </button>
+        </form>
+
+        <p class="text-center text-muted mt-4 mb-0" style="font-size:12px">
+            <i class="fas fa-shield-alt me-1 text-success"></i>
+            Деректеріңіз қауіпсіз сақталады
+        </p>
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // If already logged in → redirect
+    auth.onAuthStateChanged(async (user) => {
+        if (!user) return;
+        try {
+            const doc = await db.collection('users').doc(user.uid).get();
+            const role = doc.exists ? doc.data().role : 'user';
+            window.location.href = role === 'admin' ? 'admin/index.html' : 'index.html';
+        } catch { window.location.href = 'index.html'; }
+    });
+
+    function switchTab(tab) {
+        const isLogin = tab === 'login';
+        document.getElementById('tab-login').classList.toggle('active', isLogin);
+        document.getElementById('tab-register').classList.toggle('active', !isLogin);
+        document.getElementById('login-form').style.display    = isLogin ? 'block' : 'none';
+        document.getElementById('register-form').style.display = isLogin ? 'none'  : 'block';
+        document.getElementById('form-subtitle').textContent   =
+            isLogin ? 'Жалғастыру үшін кіріңіз' : 'Жаңа аккаунт жасаңыз';
+    }
+
+    async function handleLogin(e) {
+        e.preventDefault();
+        const btn = document.getElementById('login-btn');
+        setLoading(btn, true);
+        try {
+            await loginUser(
+                document.getElementById('login-email').value.trim(),
+                document.getElementById('login-password').value
+            );
+        } catch (err) {
+            showToast(getAuthErrorMessage(err.code), 'error');
+            setLoading(btn, false, 'Кіру <i class="fas fa-arrow-right ms-1"></i>');
+        }
+    }
+
+    async function handleRegister(e) {
+        e.preventDefault();
+        const btn = document.getElementById('register-btn');
+        setLoading(btn, true);
+        try {
+            await registerUser(
+                document.getElementById('reg-email').value.trim(),
+                document.getElementById('reg-password').value,
+                document.getElementById('reg-name').value.trim()
+            );
+            showToast('Тіркелу сәтті! Қош келдіңіз! 🎉', 'success');
+        } catch (err) {
+            showToast(getAuthErrorMessage(err.code), 'error');
+            setLoading(btn, false, 'Тіркелу <i class="fas fa-user-plus ms-1"></i>');
+        }
+    }
+
+    function setLoading(btn, loading, resetHtml) {
+        btn.disabled = loading;
+        if (loading) btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Жүктелуде...';
+        else if (resetHtml) btn.innerHTML = resetHtml;
+    }
+
+    function togglePwd(id, btn) {
+        const input = document.getElementById(id);
+        const hidden = input.type === 'password';
+        input.type = hidden ? 'text' : 'password';
+        btn.querySelector('i').className = `fas fa-${hidden ? 'eye-slash' : 'eye'}`;
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin — Тесттер</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css">
+    <style>body { font-family: 'Poppins', sans-serif; }</style>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="../js/firebase-config.js"></script>
+    <script src="../js/auth.js"></script>
+</head>
+<body class="admin-body">
+<div id="toast-container"></div>
+
+<!-- Mobile offcanvas sidebar -->
+<div class="offcanvas offcanvas-start admin-mobile-offcanvas" tabindex="-1" id="adminSidebar">
+    <div class="offcanvas-header border-bottom border-white border-opacity-10">
+        <div class="sidebar-brand py-0 px-0 border-0">
+            <i class="fas fa-shield-alt"></i><span>Admin Panel</span>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body p-0">
+        <nav class="sidebar-nav">
+            <a href="index.html"   class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            <a href="quizzes.html" class="nav-link active"><i class="fas fa-clipboard-list"></i> Тесттер</a>
+            <a href="import.html"  class="nav-link"><i class="fas fa-file-import"></i> Импорт</a>
+            <a href="users.html"   class="nav-link"><i class="fas fa-users"></i> Юзерлер</a>
+            <a href="groups.html"  class="nav-link"><i class="fas fa-layer-group"></i> Топтар</a>
+            <a href="results.html" class="nav-link"><i class="fas fa-chart-bar"></i> Нәтижелер</a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="../index.html" class="nav-link"><i class="fas fa-home"></i> Сайтқа қайту</a>
+            <a href="#" onclick="logoutUser()" class="nav-link" style="color:#fd79a8"><i class="fas fa-sign-out-alt"></i> Шығу</a>
+        </div>
+    </div>
+</div>
+
+<!-- Desktop sidebar -->
+<div class="admin-sidebar">
+    <div class="sidebar-brand">
+        <i class="fas fa-shield-alt"></i><span>Admin Panel</span>
+    </div>
+    <nav class="sidebar-nav flex-grow-1">
+        <a href="index.html"   class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+        <a href="quizzes.html" class="nav-link active"><i class="fas fa-clipboard-list"></i> Тесттер</a>
+        <a href="import.html"  class="nav-link"><i class="fas fa-file-import"></i> Импорт</a>
+        <a href="users.html"   class="nav-link"><i class="fas fa-users"></i> Юзерлер</a>
+        <a href="groups.html"  class="nav-link"><i class="fas fa-layer-group"></i> Топтар</a>
+        <a href="results.html" class="nav-link"><i class="fas fa-chart-bar"></i> Нәтижелер</a>
+    </nav>
+    <div class="sidebar-footer">
+        <a href="../index.html" class="nav-link"><i class="fas fa-home"></i> Сайтқа қайту</a>
+        <a href="#" onclick="logoutUser()" class="nav-link" style="color:#fd79a8"><i class="fas fa-sign-out-alt"></i> Шығу</a>
+    </div>
+</div>
+
+<!-- Main wrapper -->
+<div class="admin-main-wrapper">
+
+    <nav class="navbar bg-white shadow-sm px-3 px-lg-4 sticky-top" style="z-index:999">
+        <button class="btn btn-link d-lg-none p-0 text-dark me-2" data-bs-toggle="offcanvas" data-bs-target="#adminSidebar">
+            <i class="fas fa-bars fa-lg"></i>
+        </button>
+        <h6 class="mb-0 fw-bold">Тесттерді басқару</h6>
+        <div class="ms-auto d-flex align-items-center gap-2">
+            <div class="avatar-circle" id="admin-avatar">A</div>
+            <span class="fw-semibold small d-none d-sm-inline" id="admin-name"></span>
+        </div>
+    </nav>
+
+    <div class="p-3 p-lg-4">
+        <div class="card border-0 shadow-sm" style="border-radius:1rem">
+            <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center pt-3 pb-2 px-4" style="border-radius:1rem 1rem 0 0">
+                <h6 class="fw-bold mb-0"><i class="fas fa-clipboard-list text-primary me-2"></i>Барлық тесттер</h6>
+                <button class="btn btn-primary rounded-pill fw-semibold px-3" onclick="openModal()">
+                    <i class="fas fa-plus me-1"></i>Жаңа тест
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Тест</th>
+                            <th>Сұрақтар</th>
+                            <th>Уақыт</th>
+                            <th>Кездейсоқ</th>
+                            <th>Статус</th>
+                            <th>Қолжетімділік</th>
+                            <th>Әрекет</th>
+                        </tr>
+                    </thead>
+                    <tbody id="quizzes-body">
+                        <tr><td colspan="7" class="text-center py-4 text-muted">
+                            <span class="spinner-border spinner-border-sm me-2"></span>Жүктелуде...
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create / Edit Modal -->
+<div class="modal fade" id="quizModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius:1rem;overflow:hidden">
+            <div class="modal-header text-white border-0" style="background:var(--quiz-gradient)">
+                <h5 class="modal-title fw-bold" id="quizModalTitle">
+                    <i class="fas fa-plus-circle me-2"></i>Жаңа тест
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="quiz-form" onsubmit="saveQuiz(event)">
+                    <input type="hidden" id="edit-id">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Тест атауы *</label>
+                        <input type="text" id="f-title" class="form-control" placeholder="Мысалы: АКТ негіздері" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Сипаттамасы</label>
+                        <input type="text" id="f-desc" class="form-control" placeholder="Қысқаша сипаттама (міндетті емес)">
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Иконка (FontAwesome)</label>
+                            <input type="text" id="f-icon" class="form-control" placeholder="fas fa-scroll" value="fas fa-clipboard-list">
+                            <div class="form-text"><a href="https://fontawesome.com/icons" target="_blank">fontawesome.com/icons</a></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Түс</label>
+                            <select id="f-color" class="form-select">
+                                <option value="linear-gradient(135deg,#667eea,#764ba2)">🟣 Күлгін</option>
+                                <option value="linear-gradient(135deg,#f093fb,#f5576c)">🩷 Қызғылт</option>
+                                <option value="linear-gradient(135deg,#4facfe,#00f2fe)">🔵 Көк</option>
+                                <option value="linear-gradient(135deg,#43e97b,#38f9d7)">🟢 Жасыл</option>
+                                <option value="linear-gradient(135deg,#fdcb6e,#e17055)">🟠 Апельсин</option>
+                                <option value="linear-gradient(135deg,#a29bfe,#6c5ce7)">💜 Индиго</option>
+                                <option value="linear-gradient(135deg,#fd79a8,#e84393)">🌸 Роза</option>
+                                <option value="linear-gradient(135deg,#434343,#000000)">⚫ Қара</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Уақыт шегі (минут)</label>
+                            <input type="number" id="f-time" class="form-control" value="0" min="0" max="180">
+                            <div class="form-text">0 = шектеусіз</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Параметрлер</label>
+                            <div class="d-flex flex-column gap-2 mt-1">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="f-random">
+                                    <label class="form-check-label" for="f-random">Сұрақтарды кездейсоқ қою</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="f-active" checked>
+                                    <label class="form-check-label" for="f-active">Белсенді (пайдаланушыларға көрінсін)</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Access control -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Қолжетімділік</label>
+                        <div class="d-flex gap-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="f-access" id="f-access-public" value="public" checked onchange="toggleAccessPanel()">
+                                <label class="form-check-label" for="f-access-public">
+                                    <i class="fas fa-globe me-1 text-success"></i>Барлығы (ашық)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="f-access" id="f-access-restricted" value="restricted" onchange="toggleAccessPanel()">
+                                <label class="form-check-label" for="f-access-restricted">
+                                    <i class="fas fa-lock me-1 text-warning"></i>Таңдалған пайдаланушылар
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="access-user-panel" class="mb-4" style="display:none">
+                        <label class="form-label fw-semibold small text-muted">Кімге рұқсат беру:</label>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                            <input type="text" id="user-search-input" class="form-control border-start-0"
+                                placeholder="Пайдаланушыны іздеу..." oninput="filterUserCheckboxes()">
+                        </div>
+                        <div id="user-checkboxes" class="border rounded-3 p-2" style="max-height:180px;overflow-y:auto">
+                            <div class="text-muted small text-center py-2">
+                                <span class="spinner-border spinner-border-sm me-1"></span>Жүктелуде...
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between mt-2">
+                            <small class="text-muted" id="selected-count">0 таңдалды</small>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-link btn-sm p-0 text-primary" onclick="selectAllUsers()">Барлығын таңдау</button>
+                                <button type="button" class="btn btn-link btn-sm p-0 text-secondary" onclick="deselectAllUsers()">Болдырмау</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary fw-semibold flex-fill rounded-pill" id="save-btn">
+                            <i class="fas fa-save me-1"></i>Сақтау
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">
+                            Бас тарту
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let quizzes  = [];
+    let allUsers = [];
+    let quizModal;
+
+    requireAdmin(async (user, userData) => {
+        const name = userData.name || user.email;
+        document.getElementById('admin-name').textContent = name;
+        document.getElementById('admin-avatar').textContent = name.charAt(0).toUpperCase();
+        quizModal = new bootstrap.Modal(document.getElementById('quizModal'));
+        await Promise.all([loadQuizzes(), loadAllUsers()]);
+    });
+
+    async function loadAllUsers() {
+        const snap = await db.collection('users').orderBy('name').get();
+        allUsers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+
+    async function loadQuizzes() {
+        const snap = await db.collection('quizzes').orderBy('createdAt', 'desc').get();
+        quizzes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderTable();
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('quizzes-body');
+        if (quizzes.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">Тест жоқ. Жаңа тест қосыңыз!</td></tr>';
+            return;
+        }
+        tbody.innerHTML = quizzes.map(q => {
+            const isRestricted = q.accessType === 'restricted';
+            const allowedCount = (q.allowedUsers || []).length;
+            const accessBadge  = isRestricted
+                ? `<span class="badge bg-warning text-dark rounded-pill"><i class="fas fa-lock me-1"></i>${allowedCount} адам</span>`
+                : `<span class="badge bg-light text-secondary border rounded-pill"><i class="fas fa-globe me-1"></i>Ашық</span>`;
+            return `
+            <tr>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="stat-icon-box flex-shrink-0" style="width:36px;height:36px;border-radius:8px;font-size:13px;background:${q.color || 'var(--quiz-gradient)'}">
+                            <i class="${q.icon || 'fas fa-clipboard-list'}"></i>
+                        </div>
+                        <div>
+                            <div class="fw-semibold">${q.title}</div>
+                            ${q.description ? `<div class="text-muted small">${q.description}</div>` : ''}
+                        </div>
+                    </div>
+                </td>
+                <td><span class="badge bg-primary">${q.questionCount || 0}</span></td>
+                <td class="text-muted small">${q.timeLimit > 0 ? q.timeLimit + ' мин' : '—'}</td>
+                <td>
+                    ${q.randomOrder
+                        ? '<i class="fas fa-check-circle text-success"></i>'
+                        : '<i class="fas fa-times-circle text-secondary opacity-25"></i>'}
+                </td>
+                <td>
+                    <span class="badge ${q.isActive ? 'bg-success' : 'bg-secondary'} rounded-pill"
+                          role="button" onclick="toggleActive('${q.id}', ${q.isActive})">
+                        ${q.isActive ? 'Белсенді' : 'Өшірулі'}
+                    </span>
+                </td>
+                <td>${accessBadge}</td>
+                <td>
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-sm btn-outline-primary rounded-2" onclick="openModal('${q.id}')" title="Өңдеу">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <a href="import.html?quiz=${q.id}" class="btn btn-sm btn-outline-success rounded-2" title="Импорт">
+                            <i class="fas fa-file-import"></i>
+                        </a>
+                        <button class="btn btn-sm btn-outline-danger rounded-2" onclick="deleteQuiz('${q.id}','${q.title}')" title="Жою">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    function openModal(quizId) {
+        const titleEl = document.getElementById('quizModalTitle');
+        if (quizId) {
+            const q = quizzes.find(x => x.id === quizId);
+            titleEl.innerHTML = '<i class="fas fa-edit me-2"></i>Тестті өңдеу';
+            document.getElementById('edit-id').value     = quizId;
+            document.getElementById('f-title').value     = q.title || '';
+            document.getElementById('f-desc').value      = q.description || '';
+            document.getElementById('f-icon').value      = q.icon || 'fas fa-clipboard-list';
+            document.getElementById('f-color').value     = q.color || 'linear-gradient(135deg,#667eea,#764ba2)';
+            document.getElementById('f-time').value      = q.timeLimit || 0;
+            document.getElementById('f-random').checked  = q.randomOrder || false;
+            document.getElementById('f-active').checked  = q.isActive !== false;
+            // Access
+            const isRestricted = q.accessType === 'restricted';
+            document.getElementById('f-access-public').checked     = !isRestricted;
+            document.getElementById('f-access-restricted').checked = isRestricted;
+            renderUserCheckboxes(q.allowedUsers || []);
+            document.getElementById('access-user-panel').style.display = isRestricted ? 'block' : 'none';
+        } else {
+            titleEl.innerHTML = '<i class="fas fa-plus-circle me-2"></i>Жаңа тест';
+            document.getElementById('edit-id').value = '';
+            document.getElementById('quiz-form').reset();
+            document.getElementById('f-icon').value     = 'fas fa-clipboard-list';
+            document.getElementById('f-active').checked = true;
+            document.getElementById('f-access-public').checked = true;
+            document.getElementById('access-user-panel').style.display = 'none';
+            renderUserCheckboxes([]);
+        }
+        document.getElementById('user-search-input').value = '';
+        quizModal.show();
+    }
+
+    function toggleAccessPanel() {
+        const isRestricted = document.getElementById('f-access-restricted').checked;
+        document.getElementById('access-user-panel').style.display = isRestricted ? 'block' : 'none';
+    }
+
+    function renderUserCheckboxes(selectedUids, filter = '') {
+        const container = document.getElementById('user-checkboxes');
+        const filtered  = filter
+            ? allUsers.filter(u => (u.name || u.email || '').toLowerCase().includes(filter.toLowerCase()))
+            : allUsers;
+
+        if (filtered.length === 0) {
+            container.innerHTML = '<div class="text-muted small text-center py-2">Пайдаланушы табылмады</div>';
+            updateSelectedCount();
+            return;
+        }
+        container.innerHTML = filtered.map(u => `
+            <div class="form-check py-1 border-bottom">
+                <input class="form-check-input user-cb" type="checkbox" id="ucb-${u.id}" value="${u.id}"
+                    ${selectedUids.includes(u.id) ? 'checked' : ''} onchange="updateSelectedCount()">
+                <label class="form-check-label d-flex align-items-center gap-2" for="ucb-${u.id}">
+                    <div class="avatar-circle flex-shrink-0" style="width:24px;height:24px;font-size:10px">
+                        ${(u.name || u.email || '?').charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                        <div class="fw-semibold" style="font-size:13px">${u.name || '—'}</div>
+                        <div class="text-muted" style="font-size:11px">${u.email || ''}</div>
+                    </div>
+                </label>
+            </div>
+        `).join('');
+        updateSelectedCount();
+    }
+
+    function filterUserCheckboxes() {
+        const filter   = document.getElementById('user-search-input').value;
+        const checked  = getSelectedUids();
+        renderUserCheckboxes(checked, filter);
+    }
+
+    function getSelectedUids() {
+        return Array.from(document.querySelectorAll('.user-cb:checked')).map(el => el.value);
+    }
+
+    function updateSelectedCount() {
+        document.getElementById('selected-count').textContent = getSelectedUids().length + ' таңдалды';
+    }
+
+    function selectAllUsers() {
+        document.querySelectorAll('.user-cb').forEach(cb => cb.checked = true);
+        updateSelectedCount();
+    }
+
+    function deselectAllUsers() {
+        document.querySelectorAll('.user-cb').forEach(cb => cb.checked = false);
+        updateSelectedCount();
+    }
+
+    async function saveQuiz(e) {
+        e.preventDefault();
+        const btn = document.getElementById('save-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Сақталуда...';
+
+        const isRestricted   = document.getElementById('f-access-restricted').checked;
+        const allowedUsers   = isRestricted ? getSelectedUids() : [];
+
+        if (isRestricted && allowedUsers.length === 0) {
+            showToast('Кем дегенде бір пайдаланушыны таңдаңыз', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save me-1"></i>Сақтау';
+            return;
+        }
+
+        const data = {
+            title:        document.getElementById('f-title').value.trim(),
+            description:  document.getElementById('f-desc').value.trim(),
+            icon:         document.getElementById('f-icon').value.trim() || 'fas fa-clipboard-list',
+            color:        document.getElementById('f-color').value,
+            timeLimit:    parseInt(document.getElementById('f-time').value) || 0,
+            randomOrder:  document.getElementById('f-random').checked,
+            isActive:     document.getElementById('f-active').checked,
+            accessType:   isRestricted ? 'restricted' : 'public',
+            allowedUsers: allowedUsers
+        };
+
+        try {
+            const editId = document.getElementById('edit-id').value;
+            if (editId) {
+                await db.collection('quizzes').doc(editId).update(data);
+                showToast('Тест жаңартылды ✓', 'success');
+            } else {
+                await db.collection('quizzes').add({
+                    ...data,
+                    questionCount: 0,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    createdBy: auth.currentUser.uid
+                });
+                showToast('Жаңа тест қосылды ✓', 'success');
+            }
+            quizModal.hide();
+            await loadQuizzes();
+        } catch (err) {
+            console.error(err);
+            showToast('Сақтау кезінде қате орын алды', 'error');
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save me-1"></i>Сақтау';
+    }
+
+    async function toggleActive(quizId, current) {
+        try {
+            await db.collection('quizzes').doc(quizId).update({ isActive: !current });
+            showToast(!current ? 'Тест белсендірілді' : 'Тест өшірілді', 'success');
+            await loadQuizzes();
+        } catch (err) { showToast('Қате орын алды', 'error'); }
+    }
+
+    async function deleteQuiz(quizId, title) {
+        if (!confirm(`"${title}" тестін жою керек пе?\nБарлық сұрақтар да жойылады!`)) return;
+        try {
+            const qSnap = await db.collection('quizzes').doc(quizId).collection('questions').get();
+            if (!qSnap.empty) {
+                const batch = db.batch();
+                qSnap.docs.forEach(d => batch.delete(d.ref));
+                await batch.commit();
+            }
+            await db.collection('quizzes').doc(quizId).delete();
+            showToast('Тест жойылды', 'success');
+            await loadQuizzes();
+        } catch (err) {
+            console.error(err);
+            showToast('Жою кезінде қате орын алды', 'error');
+        }
+    }
+</script>
+</body>
+</html>

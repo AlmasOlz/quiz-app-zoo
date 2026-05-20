@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Нәтиже</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            min-height: 100vh;
+            background: var(--quiz-gradient);
+            padding: 24px 16px 48px;
+        }
+        .result-card {
+            max-width: 680px;
+            margin: 0 auto;
+            border-radius: 24px !important;
+            overflow: hidden;
+            box-shadow: 0 32px 80px rgba(0,0,0,.22) !important;
+        }
+        /* Hero */
+        .result-hero {
+            background: var(--quiz-gradient);
+            padding: 52px 32px 44px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .result-hero::before {
+            content:''; position:absolute; top:-40%; right:-20%;
+            width:380px; height:380px;
+            background:rgba(255,255,255,.08); border-radius:50%;
+        }
+        .result-hero::after {
+            content:''; position:absolute; bottom:-55%; left:-10%;
+            width:280px; height:280px;
+            background:rgba(255,255,255,.06); border-radius:50%;
+        }
+        .result-hero .content { position:relative; z-index:1; }
+        /* Score ring */
+        .score-ring-wrap {
+            position: relative;
+            width: 148px; height: 148px;
+            margin: 0 auto 18px;
+        }
+        .score-ring {
+            width: 148px; height: 148px;
+            border-radius: 50%;
+            background: conic-gradient(rgba(255,255,255,.9) var(--pct), rgba(255,255,255,.18) 0);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 0 6px rgba(255,255,255,.12);
+        }
+        .score-ring-inner {
+            width: 112px; height: 112px;
+            border-radius: 50%;
+            background: rgba(0,0,0,.18);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            backdrop-filter: blur(6px);
+        }
+        .score-ring-inner .trophy { font-size: 28px; line-height: 1; }
+        .score-ring-inner .score-num {
+            font-size: 22px; font-weight: 800;
+            color: white; line-height: 1.1;
+        }
+        .score-ring-inner .score-label {
+            font-size: 10px; color: rgba(255,255,255,.7);
+            font-weight: 500;
+        }
+        .result-hero h2 {
+            color: white; font-weight: 800; font-size: 1.5rem;
+            margin-bottom: 6px;
+        }
+        .result-hero .pct-badge {
+            display: inline-block;
+            background: rgba(255,255,255,.18);
+            border: 1.5px solid rgba(255,255,255,.25);
+            color: white;
+            font-weight: 700; font-size: 22px;
+            padding: 6px 24px; border-radius: 50px;
+            backdrop-filter: blur(6px);
+        }
+        /* Stats row */
+        .stats-row {
+            display: flex;
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .stat-cell {
+            flex: 1;
+            padding: 20px 12px;
+            text-align: center;
+        }
+        .stat-cell + .stat-cell { border-left: 1px solid #e2e8f0; }
+        .stat-cell .val {
+            font-size: 22px; font-weight: 800;
+            background: var(--quiz-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: block;
+        }
+        .stat-cell .lbl { font-size: 11px; color: #64748b; font-weight: 500; }
+        /* Body */
+        .result-body { padding: 28px 28px 32px; background: white; }
+        /* Feedback badge */
+        .feedback-chip {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-weight: 600; font-size: 14px;
+        }
+        /* Action buttons */
+        .actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .actions .btn { border-radius: 12px !important; font-weight: 600; padding: 10px 22px; }
+        /* Answer review */
+        .review-section { margin-top: 28px; }
+        .review-section .review-header {
+            display: flex; align-items: center; gap: 10px;
+            margin-bottom: 16px;
+        }
+        .review-section .review-header h6 { margin: 0; font-weight: 700; font-size: 15px; }
+        .review-section .review-header .summary-pills { margin-left: auto; display: flex; gap: 6px; }
+        .answer-item {
+            border-left: 4px solid #e2e8f0;
+            padding: 12px 16px;
+            border-radius: 0 12px 12px 0;
+            background: #f8fafc;
+            transition: transform .15s, box-shadow .15s;
+            margin-bottom: 8px;
+        }
+        .answer-item:hover { transform: translateX(3px); box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+        .answer-item.correct-ans { border-left-color: #10b981; background: linear-gradient(90deg, #ecfdf5, #f8fafc); }
+        .answer-item.wrong-ans   { border-left-color: #ef4444; background: linear-gradient(90deg, #fef2f2, #f8fafc); }
+        .ans-q { font-weight: 600; font-size: 13px; color: #1e293b; margin-bottom: 6px; }
+        .ans-pill {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 12px; padding: 4px 10px; border-radius: 8px;
+            font-weight: 500; margin-right: 6px; margin-top: 2px;
+        }
+        .ans-pill.wrong-pill  { background: #fef2f2; color: #b91c1c; }
+        .ans-pill.right-pill  { background: #ecfdf5; color: #065f46; }
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+</head>
+<body>
+<div id="toast-container"></div>
+
+<div class="card border-0 result-card animate-in">
+
+    <!-- HERO -->
+    <div class="result-hero" id="result-hero">
+        <div class="content">
+            <!-- Score ring -->
+            <div class="score-ring-wrap">
+                <div class="score-ring" id="score-ring" style="--pct:0deg">
+                    <div class="score-ring-inner">
+                        <div class="trophy" id="trophy-icon">🏆</div>
+                        <div class="score-num" id="score-display">—</div>
+                        <div class="score-label">дұрыс</div>
+                    </div>
+                </div>
+            </div>
+            <h2 id="quiz-title-text">Тест аяқталды!</h2>
+            <div class="pct-badge" id="pct-badge">—%</div>
+        </div>
+    </div>
+
+    <!-- STATS ROW -->
+    <div class="stats-row">
+        <div class="stat-cell">
+            <span class="val" id="stat-pct">—</span>
+            <span class="lbl"><i class="fas fa-percent me-1"></i>Пайыз</span>
+        </div>
+        <div class="stat-cell">
+            <span class="val" id="stat-time">—</span>
+            <span class="lbl"><i class="fas fa-clock me-1"></i>Уақыт</span>
+        </div>
+        <div class="stat-cell">
+            <span class="val" id="stat-total">—</span>
+            <span class="lbl"><i class="fas fa-list-ol me-1"></i>Сұрақтар</span>
+        </div>
+    </div>
+
+    <!-- BODY -->
+    <div class="result-body">
+
+        <!-- Feedback -->
+        <div class="text-center mb-4">
+            <div id="feedback-chip" class="feedback-chip"></div>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="actions mb-4">
+            <button onclick="retryQuiz()" class="btn btn-primary">
+                <i class="fas fa-redo me-1"></i>Қайта тапсыру
+            </button>
+            <button onclick="goLeaderboard()" class="btn btn-warning">
+                <i class="fas fa-trophy me-1"></i>Лидерборд
+            </button>
+            <a href="index.html" class="btn btn-outline-secondary">
+                <i class="fas fa-home me-1"></i>Мәзір
+            </a>
+        </div>
+
+        <!-- Answer review -->
+        <div id="answer-review" class="review-section" style="display:none">
+            <hr style="border-color:#e2e8f0">
+            <div class="review-header">
+                <h6><i class="fas fa-list-check text-primary me-2"></i>Жауаптарды тексеру</h6>
+                <div class="summary-pills">
+                    <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle" id="correct-count-badge"></span>
+                    <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle" id="wrong-count-badge"></span>
+                </div>
+            </div>
+            <div id="answers-list"></div>
+        </div>
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const params   = new URLSearchParams(window.location.search);
+    const resultId = params.get('id');
+    let quizIdGlobal = null;
+
+    if (!resultId) { window.location.href = 'index.html'; }
+    else { requireAuth(async (user) => { await loadResult(user.uid); }); }
+
+    async function loadResult(userId) {
+        try {
+            const doc = await db.collection('results').doc(resultId).get();
+            if (!doc.exists) {
+                showToast('Нәтиже табылмады', 'error');
+                setTimeout(() => window.location.href = 'index.html', 1500);
+                return;
+            }
+            const r = doc.data();
+            if (r.userId !== userId) {
+                const ud = await db.collection('users').doc(userId).get();
+                if (!ud.exists || ud.data().role !== 'admin') { window.location.href = 'index.html'; return; }
+            }
+            quizIdGlobal = r.quizId;
+            renderResult(r);
+        } catch (err) { console.error(err); showToast('Жүктеу қатесі', 'error'); }
+    }
+
+    function renderResult(r) {
+        document.title = `Нәтиже — ${r.quizTitle}`;
+        document.getElementById('quiz-title-text').textContent = r.quizTitle || 'Тест аяқталды!';
+        document.getElementById('score-display').textContent   = `${r.score}/${r.total}`;
+        document.getElementById('stat-pct').textContent        = `${r.percentage}%`;
+        document.getElementById('stat-time').textContent       = formatTime(r.timeTaken);
+        document.getElementById('stat-total').textContent      = r.total;
+        document.getElementById('pct-badge').textContent       = `${r.percentage}%`;
+
+        // Animated score ring
+        const deg = Math.round(r.percentage / 100 * 360);
+        document.getElementById('score-ring').style.setProperty('--pct', deg + 'deg');
+
+        const hero     = document.getElementById('result-hero');
+        const trophy   = document.getElementById('trophy-icon');
+        const chip     = document.getElementById('feedback-chip');
+
+        if (r.percentage === 100) {
+            trophy.textContent = '🥇';
+            hero.style.background = 'linear-gradient(135deg,#00b894,#00cec9)';
+            chip.style.cssText = 'background:#dcfce7;color:#166534;border:1.5px solid #86efac';
+            chip.innerHTML = '<i class="fas fa-star text-warning"></i> Керемет! Барлығы дұрыс!';
+        } else if (r.percentage >= 80) {
+            trophy.textContent = '🏆';
+            chip.style.cssText = 'background:#ede9fe;color:#4c1d95;border:1.5px solid #c4b5fd';
+            chip.innerHTML = '<i class="fas fa-thumbs-up"></i> Өте жақсы нәтиже!';
+        } else if (r.percentage >= 60) {
+            trophy.textContent = '👍';
+            chip.style.cssText = 'background:#dbeafe;color:#1e40af;border:1.5px solid #93c5fd';
+            chip.innerHTML = '<i class="fas fa-check-circle"></i> Жақсы! Жалғастыр!';
+        } else if (r.percentage >= 40) {
+            trophy.textContent = '📚';
+            hero.style.background = 'linear-gradient(135deg,#fdcb6e,#e17055)';
+            chip.style.cssText = 'background:#fef9c3;color:#854d0e;border:1.5px solid #fde047';
+            chip.innerHTML = '<i class="fas fa-book-open"></i> Жарайсың, бірақ тағы дайындал';
+        } else {
+            trophy.textContent = '💪';
+            hero.style.background = 'linear-gradient(135deg,#fd79a8,#e84393)';
+            chip.style.cssText = 'background:#fee2e2;color:#991b1b;border:1.5px solid #fca5a5';
+            chip.innerHTML = '<i class="fas fa-dumbbell"></i> Тағы да дайындалу керек!';
+        }
+
+        if (r.answers?.length) {
+            const correctCount = r.answers.filter(a => a.isCorrect).length;
+            const wrongCount   = r.answers.length - correctCount;
+            document.getElementById('correct-count-badge').innerHTML = `<i class="fas fa-check me-1"></i>${correctCount} дұрыс`;
+            document.getElementById('wrong-count-badge').innerHTML   = `<i class="fas fa-times me-1"></i>${wrongCount} қате`;
+            document.getElementById('answer-review').style.display = 'block';
+            document.getElementById('answers-list').innerHTML =
+                r.answers.map((a, i) => buildAnswerItem(a, i)).join('');
+        }
+    }
+
+    function buildAnswerItem(a, i) {
+        const cls  = a.isCorrect ? 'correct-ans' : 'wrong-ans';
+        const icon = a.isCorrect
+            ? '<i class="fas fa-check-circle text-success me-2"></i>'
+            : '<i class="fas fa-times-circle text-danger me-2"></i>';
+
+        let extra = '';
+        if (!a.isCorrect && a.options) {
+            const sel = a.selectedIndices?.[0];
+            const cor = a.correctIndices?.[0];
+            if (sel != null && a.options[sel])
+                extra += `<span class="ans-pill wrong-pill"><i class="fas fa-times"></i>${a.options[sel]}</span>`;
+            if (cor != null && a.options[cor])
+                extra += `<span class="ans-pill right-pill"><i class="fas fa-check"></i>${a.options[cor]}</span>`;
+        }
+
+        return `<div class="answer-item ${cls}">
+            <div class="ans-q">${icon}${i + 1}. ${a.question}</div>
+            ${extra ? `<div class="mt-1">${extra}</div>` : ''}
+        </div>`;
+    }
+
+    function retryQuiz()     { window.location.href = `quiz.html?id=${quizIdGlobal}`; }
+    function goLeaderboard() { window.location.href = `leaderboard.html?quiz=${quizIdGlobal}`; }
+</script>
+</body>
+</html>

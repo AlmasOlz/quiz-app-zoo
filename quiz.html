@@ -3,84 +3,195 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Online Quiz</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Тест</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            min-height: 100vh;
+            background: var(--quiz-gradient);
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 20px 16px 40px;
+        }
+        .quiz-card {
+            width: 100%;
+            max-width: 680px;
+            border-radius: 20px !important;
+            overflow: hidden;
+        }
+        /* Top header bar */
+        .quiz-header {
+            background: var(--quiz-gradient);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .quiz-header .quiz-name {
+            color: rgba(255,255,255,.9);
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: .03em;
+            text-transform: uppercase;
+        }
+        /* Progress section */
+        .quiz-progress-wrap {
+            padding: 0 24px;
+            background: white;
+        }
+        .quiz-progress-track {
+            height: 6px;
+            background: #f1f5f9;
+            border-radius: 50px;
+            overflow: hidden;
+        }
+        .quiz-progress-track .fill {
+            height: 100%;
+            background: var(--quiz-gradient);
+            border-radius: 50px;
+            transition: width .4s cubic-bezier(.34,1.2,.64,1);
+        }
+        /* Body */
+        .quiz-body { padding: 24px 24px 28px; background: white; }
+        .question-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+        .question-counter {
+            font-size: 13px;
+            color: var(--muted);
+            font-weight: 600;
+            background: #f1f5f9;
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+        .question-text {
+            font-size: 17px;
+            font-weight: 700;
+            line-height: 1.55;
+            color: var(--text);
+            margin-bottom: 20px;
+            min-height: 48px;
+        }
+        /* Jump input */
+        .jump-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .jump-wrap input {
+            width: 60px;
+            font-size: 13px;
+            text-align: center;
+            border-radius: 10px !important;
+        }
+        .jump-wrap button {
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 10px !important;
+            font-weight: 600;
+        }
+        /* Options */
+        #options-list { margin-bottom: 22px; }
+        /* Nav buttons */
+        .quiz-nav { display: flex; gap: 10px; }
+        .quiz-nav .btn { border-radius: 12px !important; font-weight: 600; font-size: 14px; flex: 1; padding: 11px 16px; }
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
 </head>
 <body>
+<div id="toast-container"></div>
 
-    <div id="quiz-screen" class="quiz-card">
-        <div class="quiz-header">
-            <a href="index.html" class="back-link">
-                <i class="fas fa-arrow-left"></i> Артқа
-            </a>
-            <div class="timer-box">
-                <span id="quiz-title">Тақырып</span>
-            </div>
-        </div>
-        
-        <div class="progress-container">
-            <div class="progress-bar" id="progress-bar"></div>
-        </div>
-        
-        <div class="info-bar">
-            <div id="question-count" class="q-count">1 / 10</div>
-            
-            <div class="jump-box">
-                <input type="number" id="jump-input" placeholder="№" min="1">
-                <button onclick="jumpToQuestion()" class="jump-btn">Өту</button>
-            </div>
-        </div>
+<div class="card border-0 shadow-lg quiz-card animate-in">
 
-        <h3 id="question-text">Сұрақ жүктелуде...</h3>
-
-        <div class="img-container">
-            <img id="question-img" src="" alt="Сурет" style="display: none;">
-        </div>
-        
-        <div id="options-list" class="options-grid"></div>
-
-        <div class="navigation-buttons">
-            <button id="prev-btn" class="nav-btn prev-btn" onclick="prevQuestion()" style="display: none;">
-                <i class="fas fa-arrow-left"></i> Артқа
-            </button>
-
-            <button id="check-btn" class="nav-btn check-btn" style="display: none;" onclick="checkMultiAnswer()">
-                Тексеру
-            </button>
-
-            <button id="next-btn" class="nav-btn next-btn" onclick="nextQuestion()" style="display: none;">
-                Келесі <i class="fas fa-arrow-right"></i>
-            </button>
+    <!-- Coloured header -->
+    <div class="quiz-header">
+        <a href="index.html" class="btn btn-sm text-white fw-semibold"
+           style="background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.25);border-radius:10px;font-size:13px;padding:6px 14px;backdrop-filter:blur(6px)">
+            <i class="fas fa-arrow-left me-1"></i>Артқа
+        </a>
+        <span id="quiz-title" class="quiz-name"></span>
+        <div id="timer-container">
+            <span id="timer-display" class="timer-badge" style="display:none">
+                <i class="fas fa-clock"></i><span id="timer-text">00:00</span>
+            </span>
         </div>
     </div>
 
-    <div id="result-screen" class="quiz-card result-card" style="display: none;">
-        <div class="trophy-icon">
-            <i class="fas fa-trophy"></i>
-        </div>
-        <h2>Тест аяқталды!</h2>
-        <p class="result-label">Сіздің нәтижеңіз:</p>
-        
-        <div class="score-box">
-            <span id="score-text">0</span> / <span id="total-text">0</span>
-        </div>
-
-        <p id="feedback-text" class="feedback"></p>
-
-        <div class="action-buttons">
-            <button onclick="location.reload()" class="btn-restart">
-                <i class="fas fa-redo"></i> Қайта тапсыру
-            </button>
-            <a href="index.html" class="btn-home">
-                <i class="fas fa-home"></i> Мәзір
-            </a>
+    <!-- Thin progress bar right under header -->
+    <div class="quiz-progress-wrap pt-3 pb-0">
+        <div class="quiz-progress-track">
+            <div class="fill" id="progress-bar" style="width:0%"></div>
         </div>
     </div>
 
-    <script src="questions.js"></script>
-    <script src="script.js"></script>
+    <!-- Main body -->
+    <div class="quiz-body">
 
+        <!-- Counter + Jump -->
+        <div class="question-meta">
+            <span class="question-counter" id="question-count">Сұрақ 1 / 10</span>
+            <div class="jump-wrap">
+                <input type="number" class="form-control form-control-sm"
+                       id="jump-input" placeholder="#" min="1">
+                <button class="btn btn-sm btn-outline-primary" onclick="jumpToQuestion()">Өту</button>
+            </div>
+        </div>
+
+        <!-- Question text -->
+        <div class="question-text" id="question-text">Жүктелуде...</div>
+
+        <!-- Image -->
+        <div class="text-center mb-3">
+            <img id="question-img" src="" class="img-fluid rounded-3 shadow-sm"
+                 style="display:none;max-height:220px" alt="Сурет">
+        </div>
+
+        <!-- Options -->
+        <div id="options-list" class="d-flex flex-column gap-2"></div>
+
+        <!-- Navigation -->
+        <div class="quiz-nav">
+            <button id="prev-btn" class="btn btn-outline-secondary"
+                    onclick="prevQuestion()" style="display:none">
+                <i class="fas fa-arrow-left me-1"></i>Артқа
+            </button>
+            <button id="check-btn" class="btn btn-warning"
+                    onclick="checkMultiAnswer()" style="display:none">
+                <i class="fas fa-check me-1"></i>Тексеру
+            </button>
+            <button id="next-btn" class="btn btn-primary"
+                    onclick="nextQuestion()" style="display:none">
+                Келесі <i class="fas fa-arrow-right ms-1"></i>
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<!-- Saving overlay -->
+<div id="saving-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.65);z-index:9999;align-items:center;justify-content:center">
+    <div class="card border-0 text-center p-4 pop-in" style="border-radius:20px;min-width:240px;box-shadow:0 24px 80px rgba(0,0,0,.3)">
+        <div class="mx-auto mb-3" style="width:64px;height:64px;background:var(--quiz-gradient);border-radius:50%;display:flex;align-items:center;justify-content:center">
+            <div class="spinner-border text-white" style="width:32px;height:32px" role="status"></div>
+        </div>
+        <p class="fw-bold mb-1" style="font-size:16px">Нәтиже сақталуда...</p>
+        <p class="text-muted mb-0" style="font-size:13px">Бір сәт күте тұрыңыз</p>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="script.js"></script>
 </body>
 </html>

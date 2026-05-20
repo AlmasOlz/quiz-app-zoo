@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin — Нәтижелер</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css">
+    <style>body { font-family: 'Poppins', sans-serif; }</style>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="../js/firebase-config.js"></script>
+    <script src="../js/auth.js"></script>
+</head>
+<body class="admin-body">
+<div id="toast-container"></div>
+
+<!-- Mobile offcanvas sidebar -->
+<div class="offcanvas offcanvas-start admin-mobile-offcanvas" tabindex="-1" id="adminSidebar">
+    <div class="offcanvas-header border-bottom border-white border-opacity-10">
+        <div class="sidebar-brand py-0 px-0 border-0">
+            <i class="fas fa-shield-alt"></i><span>Admin Panel</span>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body p-0">
+        <nav class="sidebar-nav">
+            <a href="index.html"   class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            <a href="quizzes.html" class="nav-link"><i class="fas fa-clipboard-list"></i> Тесттер</a>
+            <a href="import.html"  class="nav-link"><i class="fas fa-file-import"></i> Импорт</a>
+            <a href="users.html"   class="nav-link"><i class="fas fa-users"></i> Юзерлер</a>
+            <a href="groups.html"  class="nav-link"><i class="fas fa-layer-group"></i> Топтар</a>
+            <a href="results.html" class="nav-link active"><i class="fas fa-chart-bar"></i> Нәтижелер</a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="../index.html" class="nav-link"><i class="fas fa-home"></i> Сайтқа қайту</a>
+            <a href="#" onclick="logoutUser()" class="nav-link" style="color:#fd79a8"><i class="fas fa-sign-out-alt"></i> Шығу</a>
+        </div>
+    </div>
+</div>
+
+<!-- Desktop sidebar -->
+<div class="admin-sidebar">
+    <div class="sidebar-brand">
+        <i class="fas fa-shield-alt"></i><span>Admin Panel</span>
+    </div>
+    <nav class="sidebar-nav flex-grow-1">
+        <a href="index.html"   class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+        <a href="quizzes.html" class="nav-link"><i class="fas fa-clipboard-list"></i> Тесттер</a>
+        <a href="import.html"  class="nav-link"><i class="fas fa-file-import"></i> Импорт</a>
+        <a href="users.html"   class="nav-link"><i class="fas fa-users"></i> Юзерлер</a>
+        <a href="groups.html"  class="nav-link"><i class="fas fa-layer-group"></i> Топтар</a>
+        <a href="results.html" class="nav-link active"><i class="fas fa-chart-bar"></i> Нәтижелер</a>
+    </nav>
+    <div class="sidebar-footer">
+        <a href="../index.html" class="nav-link"><i class="fas fa-home"></i> Сайтқа қайту</a>
+        <a href="#" onclick="logoutUser()" class="nav-link" style="color:#fd79a8"><i class="fas fa-sign-out-alt"></i> Шығу</a>
+    </div>
+</div>
+
+<!-- Main wrapper -->
+<div class="admin-main-wrapper">
+
+    <nav class="navbar bg-white shadow-sm px-3 px-lg-4 sticky-top" style="z-index:999">
+        <button class="btn btn-link d-lg-none p-0 text-dark me-2" data-bs-toggle="offcanvas" data-bs-target="#adminSidebar">
+            <i class="fas fa-bars fa-lg"></i>
+        </button>
+        <h6 class="mb-0 fw-bold">Барлық нәтижелер</h6>
+        <div class="ms-auto d-flex align-items-center gap-2">
+            <div class="avatar-circle" id="admin-avatar">A</div>
+            <span class="fw-semibold small d-none d-sm-inline" id="admin-name"></span>
+        </div>
+    </nav>
+
+    <div class="p-3 p-lg-4">
+
+        <!-- Analytics cards -->
+        <div class="card border-0 shadow-sm mb-4" style="border-radius:1rem">
+            <div class="card-header bg-white border-0 pt-3 pb-2 px-4" style="border-radius:1rem 1rem 0 0">
+                <h6 class="fw-bold mb-0"><i class="fas fa-chart-pie text-primary me-2"></i>Тест бойынша аналитика</h6>
+            </div>
+            <div class="card-body px-4 pb-4">
+                <div class="row g-3" id="analytics-grid">
+                    <div class="col-12 text-muted small">
+                        <span class="spinner-border spinner-border-sm me-1"></span>Жүктелуде...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="d-flex gap-3 flex-wrap align-items-end mb-3">
+            <div>
+                <label class="form-label fw-semibold small mb-1">Тест бойынша сүзгі</label>
+                <select id="filter-quiz" class="form-select form-select-sm" onchange="filterResults()" style="min-width:200px">
+                    <option value="">Барлық тесттер</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label fw-semibold small mb-1">Сұрыптау</label>
+                <select id="sort-by" class="form-select form-select-sm" onchange="filterResults()">
+                    <option value="date">Күні (жаңадан)</option>
+                    <option value="score">Балл (жоғарыдан)</option>
+                    <option value="user">Атауы (А-Я)</option>
+                </select>
+            </div>
+            <div class="ms-auto align-self-end">
+                <span class="badge bg-primary rounded-pill px-3 py-2" id="results-count">—</span>
+            </div>
+        </div>
+
+        <!-- Results table -->
+        <div class="card border-0 shadow-sm" style="border-radius:1rem">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Пайдаланушы</th>
+                            <th>Тест</th>
+                            <th>Балл</th>
+                            <th>%</th>
+                            <th>Уақыт</th>
+                            <th>Күні</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-body">
+                        <tr><td colspan="7" class="text-center py-4 text-muted">
+                            <span class="spinner-border spinner-border-sm me-2"></span>Жүктелуде...
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let allResults = [];
+    let quizMap = {};
+
+    requireAdmin(async (user, userData) => {
+        const name = userData.name || user.email;
+        document.getElementById('admin-name').textContent = name;
+        document.getElementById('admin-avatar').textContent = name.charAt(0).toUpperCase();
+        await Promise.all([loadQuizList(), loadResults()]);
+        buildAnalytics();
+    });
+
+    async function loadQuizList() {
+        const snap = await db.collection('quizzes').orderBy('title').get();
+        const sel = document.getElementById('filter-quiz');
+        snap.docs.forEach(d => {
+            quizMap[d.id] = d.data().title;
+            const opt = document.createElement('option');
+            opt.value = d.id;
+            opt.textContent = d.data().title;
+            sel.appendChild(opt);
+        });
+    }
+
+    async function loadResults() {
+        const snap = await db.collection('results').orderBy('completedAt', 'desc').get();
+        allResults = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        filterResults();
+    }
+
+    function filterResults() {
+        const quizFilter = document.getElementById('filter-quiz').value;
+        const sortBy     = document.getElementById('sort-by').value;
+
+        let filtered = quizFilter
+            ? allResults.filter(r => r.quizId === quizFilter)
+            : [...allResults];
+
+        if (sortBy === 'score')     filtered.sort((a, b) => b.percentage - a.percentage);
+        else if (sortBy === 'user') filtered.sort((a, b) => (a.userName || '').localeCompare(b.userName || ''));
+
+        document.getElementById('results-count').textContent = `${filtered.length} нәтиже`;
+        renderResults(filtered);
+    }
+
+    function renderResults(results) {
+        const tbody = document.getElementById('results-body');
+        if (results.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">Нәтиже жоқ</td></tr>';
+            return;
+        }
+        tbody.innerHTML = results.map(r => {
+            const pctCls = r.percentage >= 70 ? 'bg-success' : r.percentage >= 50 ? 'bg-warning text-dark' : 'bg-danger';
+            const initial = (r.userName || '?').charAt(0).toUpperCase();
+            return `<tr>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="avatar-circle flex-shrink-0" style="width:32px;height:32px;font-size:12px">${initial}</div>
+                        <div>
+                            <div class="fw-semibold small">${r.userName || '—'}</div>
+                            <div class="text-muted" style="font-size:11px">${r.userEmail || ''}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="text-muted small">${r.quizTitle || '—'}</td>
+                <td class="fw-semibold">${r.score} / ${r.total}</td>
+                <td><span class="badge ${pctCls}">${r.percentage}%</span></td>
+                <td class="text-muted small">${formatTime(r.timeTaken)}</td>
+                <td class="text-muted small">${formatDateTime(r.completedAt)}</td>
+                <td>
+                    <a href="../results.html?id=${r.id}" target="_blank"
+                       class="btn btn-sm btn-outline-primary rounded-pill" title="Толық нәтижені көру">
+                        <i class="fas fa-eye"></i>
+                    </a>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    function buildAnalytics() {
+        const byQuiz = {};
+        allResults.forEach(r => {
+            if (!byQuiz[r.quizId]) byQuiz[r.quizId] = { title: r.quizTitle, scores: [], count: 0 };
+            byQuiz[r.quizId].scores.push(r.percentage);
+            byQuiz[r.quizId].count++;
+        });
+
+        const grid = document.getElementById('analytics-grid');
+        const entries = Object.entries(byQuiz);
+        if (entries.length === 0) {
+            grid.innerHTML = '<div class="col-12 text-muted small">Нәтиже жоқ</div>';
+            return;
+        }
+
+        grid.innerHTML = entries.map(([id, data]) => {
+            const avg    = Math.round(data.scores.reduce((a, b) => a + b, 0) / data.scores.length);
+            const color  = avg >= 70 ? '#198754' : avg >= 50 ? '#f59e0b' : '#dc3545';
+            const bgCls  = avg >= 70 ? 'bg-success' : avg >= 50 ? 'bg-warning text-dark' : 'bg-danger';
+            return `<div class="col-sm-6 col-xl-4">
+                <div class="card border-0 bg-light h-100" style="border-radius:.75rem;border-left:4px solid ${color} !important;border:none">
+                    <div class="card-body p-3">
+                        <div class="fw-bold small mb-2 text-truncate">${data.title}</div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted small"><i class="fas fa-users me-1"></i>${data.count} тапсырды</span>
+                            <span class="badge ${bgCls} rounded-pill">${avg}% орта</span>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+</script>
+</body>
+</html>

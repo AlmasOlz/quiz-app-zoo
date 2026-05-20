@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin — Импорт</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css">
+    <style>body { font-family: 'Poppins', sans-serif; }</style>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="../js/firebase-config.js"></script>
+    <script src="../js/auth.js"></script>
+</head>
+<body class="admin-body">
+<div id="toast-container"></div>
+
+<!-- Mobile offcanvas sidebar -->
+<div class="offcanvas offcanvas-start admin-mobile-offcanvas" tabindex="-1" id="adminSidebar">
+    <div class="offcanvas-header border-bottom border-white border-opacity-10">
+        <div class="sidebar-brand py-0 px-0 border-0">
+            <i class="fas fa-shield-alt"></i><span>Admin Panel</span>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body p-0">
+        <nav class="sidebar-nav">
+            <a href="index.html"   class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            <a href="quizzes.html" class="nav-link"><i class="fas fa-clipboard-list"></i> Тесттер</a>
+            <a href="import.html"  class="nav-link active"><i class="fas fa-file-import"></i> Импорт</a>
+            <a href="users.html"   class="nav-link"><i class="fas fa-users"></i> Юзерлер</a>
+            <a href="groups.html"  class="nav-link"><i class="fas fa-layer-group"></i> Топтар</a>
+            <a href="results.html" class="nav-link"><i class="fas fa-chart-bar"></i> Нәтижелер</a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="../index.html" class="nav-link"><i class="fas fa-home"></i> Сайтқа қайту</a>
+            <a href="#" onclick="logoutUser()" class="nav-link" style="color:#fd79a8"><i class="fas fa-sign-out-alt"></i> Шығу</a>
+        </div>
+    </div>
+</div>
+
+<!-- Desktop sidebar -->
+<div class="admin-sidebar">
+    <div class="sidebar-brand">
+        <i class="fas fa-shield-alt"></i><span>Admin Panel</span>
+    </div>
+    <nav class="sidebar-nav flex-grow-1">
+        <a href="index.html"   class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+        <a href="quizzes.html" class="nav-link"><i class="fas fa-clipboard-list"></i> Тесттер</a>
+        <a href="import.html"  class="nav-link active"><i class="fas fa-file-import"></i> Импорт</a>
+        <a href="users.html"   class="nav-link"><i class="fas fa-users"></i> Юзерлер</a>
+        <a href="groups.html"  class="nav-link"><i class="fas fa-layer-group"></i> Топтар</a>
+        <a href="results.html" class="nav-link"><i class="fas fa-chart-bar"></i> Нәтижелер</a>
+    </nav>
+    <div class="sidebar-footer">
+        <a href="../index.html" class="nav-link"><i class="fas fa-home"></i> Сайтқа қайту</a>
+        <a href="#" onclick="logoutUser()" class="nav-link" style="color:#fd79a8"><i class="fas fa-sign-out-alt"></i> Шығу</a>
+    </div>
+</div>
+
+<!-- Main wrapper -->
+<div class="admin-main-wrapper">
+
+    <nav class="navbar bg-white shadow-sm px-3 px-lg-4 sticky-top" style="z-index:999">
+        <button class="btn btn-link d-lg-none p-0 text-dark me-2" data-bs-toggle="offcanvas" data-bs-target="#adminSidebar">
+            <i class="fas fa-bars fa-lg"></i>
+        </button>
+        <h6 class="mb-0 fw-bold">Сұрақтарды импорттау</h6>
+        <div class="ms-auto d-flex align-items-center gap-2">
+            <div class="avatar-circle" id="admin-avatar">A</div>
+            <span class="fw-semibold small d-none d-sm-inline" id="admin-name"></span>
+        </div>
+    </nav>
+
+    <div class="p-3 p-lg-4">
+
+        <!-- Format guide -->
+        <div class="card border-0 shadow-sm mb-4" style="border-radius:1rem;border-left:4px solid var(--quiz-primary) !important">
+            <div class="card-body px-4 py-3">
+                <h6 class="fw-bold text-primary mb-2"><i class="fas fa-info-circle me-2"></i>Файл форматы</h6>
+                <p class="text-muted small mb-2">
+                    Файл <strong>.txt</strong> форматында болуы керек. Бірінші <code>&lt;variant&gt;</code> — дұрыс жауап.
+                </p>
+                <pre class="bg-light rounded-3 p-3 mb-0" style="font-size:12px;line-height:1.8;overflow-x:auto">&lt;question&gt; Суперконденсаторлардың артықшылығы неде?
+&lt;variant&gt; Энергияны дәстүрлі конденсаторларға қарағанда көп сақтау   ← дұрыс жауап
+&lt;variant&gt; Жылдам температураны өлшеу
+&lt;variant&gt; Электр тогын үнемдеусіз өткізу
+&lt;variant&gt; Суға батырғанда жұмыс істеу
+
+&lt;question&gt; Термопара дегеніміз не?
+&lt;variant&gt; Температураны өлшейтін екі түрлі металдан жасалған құрылғы  ← дұрыс жауап
+&lt;variant&gt; Тек токты өлшеуге арналған электрондық құрылғы
+&lt;variant&gt; Жарықты өлшейтін оптикалық құрал</pre>
+            </div>
+        </div>
+
+        <!-- Step 1: Select quiz -->
+        <div class="card border-0 shadow-sm mb-4" style="border-radius:1rem">
+            <div class="card-body px-4 py-3">
+                <h6 class="fw-bold mb-3">
+                    <span class="badge bg-primary rounded-circle me-2" style="width:24px;height:24px;line-height:24px;font-size:12px">1</span>
+                    Тестті таңдаңыз
+                </h6>
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold small">Бар тест</label>
+                        <select id="quiz-select" class="form-select">
+                            <option value="">— Тестті таңдаңыз —</option>
+                        </select>
+                    </div>
+                    <div class="col-auto d-flex align-items-end pb-1">
+                        <span class="text-muted small">немесе</span>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold small">Жаңа тест атауы</label>
+                        <input type="text" id="new-quiz-name" class="form-control" placeholder="Мысалы: Физика 101">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Upload file -->
+        <div class="card border-0 shadow-sm mb-4" style="border-radius:1rem">
+            <div class="card-body px-4 py-3">
+                <h6 class="fw-bold mb-3">
+                    <span class="badge bg-primary rounded-circle me-2" style="width:24px;height:24px;line-height:24px;font-size:12px">2</span>
+                    Файлды жүктеңіз
+                </h6>
+
+                <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+                    <i class="fas fa-file-alt fa-2x text-primary mb-2"></i>
+                    <p class="fw-semibold mb-1">Файлды осында тастаңыз немесе басыңыз</p>
+                    <small class="text-muted">.txt форматы қолданылады</small>
+                </div>
+                <input type="file" id="file-input" accept=".txt" style="display:none">
+
+                <div id="file-info" class="alert alert-primary d-none align-items-center gap-3 mt-3 mb-0" style="border-radius:10px">
+                    <i class="fas fa-file-alt fa-lg"></i>
+                    <div>
+                        <div class="fw-semibold small" id="file-name"></div>
+                        <div class="small" id="parse-result"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Preview -->
+        <div class="card border-0 shadow-sm" id="preview-card" style="display:none;border-radius:1rem">
+            <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center pt-3 pb-2 px-4" style="border-radius:1rem 1rem 0 0">
+                <h6 class="fw-bold mb-0">
+                    <span class="badge bg-primary rounded-circle me-2" style="width:24px;height:24px;line-height:24px;font-size:12px">3</span>
+                    Алдын ала қарау
+                </h6>
+                <span id="preview-count" class="badge bg-primary rounded-pill"></span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:50px">№</th>
+                            <th>Сұрақ</th>
+                            <th>Дұрыс жауап</th>
+                            <th>Басқа нұсқалар</th>
+                        </tr>
+                    </thead>
+                    <tbody id="preview-body"></tbody>
+                </table>
+            </div>
+
+            <div class="card-footer bg-white border-0 px-4 py-3" style="border-radius:0 0 1rem 1rem">
+                <div class="d-flex gap-2 align-items-center flex-wrap">
+                    <button class="btn btn-primary rounded-pill fw-semibold px-4" id="upload-btn" onclick="uploadQuestions()">
+                        <i class="fas fa-cloud-upload-alt me-1"></i>Firestore-ке жүктеу
+                    </button>
+                    <button class="btn btn-outline-secondary rounded-pill px-4" onclick="resetImport()">
+                        <i class="fas fa-times me-1"></i>Бас тарту
+                    </button>
+                    <span class="text-muted small" id="upload-status"></span>
+                </div>
+
+                <div id="upload-progress" class="mt-3" style="display:none">
+                    <div class="d-flex justify-content-between small fw-semibold mb-1">
+                        <span id="progress-label">Жүктелуде...</span>
+                        <span id="progress-pct">0%</span>
+                    </div>
+                    <div class="progress" style="height:10px;border-radius:50px">
+                        <div class="progress-bar bg-quiz" id="progress-fill" role="progressbar" style="width:0%;border-radius:50px"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let parsedQuestions = [];
+
+    requireAdmin(async (user, userData) => {
+        const name = userData.name || user.email;
+        document.getElementById('admin-name').textContent = name;
+        document.getElementById('admin-avatar').textContent = name.charAt(0).toUpperCase();
+        await loadQuizList();
+
+        const params = new URLSearchParams(window.location.search);
+        const preQuiz = params.get('quiz');
+        if (preQuiz) document.getElementById('quiz-select').value = preQuiz;
+    });
+
+    async function loadQuizList() {
+        const snap = await db.collection('quizzes').orderBy('title').get();
+        const sel = document.getElementById('quiz-select');
+        snap.docs.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.id;
+            opt.textContent = d.data().title;
+            sel.appendChild(opt);
+        });
+    }
+
+    // ── File handling ──────────────────────────────────────────
+
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file) handleFile(file);
+    });
+    fileInput.addEventListener('change', e => {
+        if (e.target.files[0]) handleFile(e.target.files[0]);
+    });
+
+    function handleFile(file) {
+        if (!file.name.endsWith('.txt')) { showToast('Тек .txt файлдары қабылданады', 'error'); return; }
+        const reader = new FileReader();
+        reader.onload = e => {
+            parsedQuestions = parseFile(e.target.result);
+            showFileInfo(file.name, parsedQuestions.length);
+            if (parsedQuestions.length > 0) showPreview(parsedQuestions);
+        };
+        reader.readAsText(file, 'UTF-8');
+    }
+
+    function showFileInfo(name, count) {
+        const info = document.getElementById('file-info');
+        info.classList.remove('d-none');
+        info.style.display = 'flex';
+        document.getElementById('file-name').textContent = name;
+        document.getElementById('parse-result').textContent =
+            count > 0 ? `✓ ${count} сұрақ табылды` : '⚠ Сұрақтар табылмады. Файл форматын тексеріңіз.';
+    }
+
+    // ── Parser ─────────────────────────────────────────────────
+
+    function parseFile(text) {
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+        const questions = [];
+        let current = null;
+        for (const line of lines) {
+            if (/^<question>/i.test(line)) {
+                if (current && current.options.length >= 2) questions.push(current);
+                current = { question: line.replace(/^<question>\s*/i, '').trim(), options: [], correct: 0 };
+            } else if (/^<variant>/i.test(line) && current) {
+                current.options.push(line.replace(/^<variant>\s*/i, '').trim());
+            }
+        }
+        if (current && current.options.length >= 2) questions.push(current);
+        return questions;
+    }
+
+    // ── Preview ────────────────────────────────────────────────
+
+    function showPreview(qs) {
+        document.getElementById('preview-card').style.display = 'block';
+        document.getElementById('preview-count').textContent = `${qs.length} сұрақ`;
+        document.getElementById('preview-body').innerHTML = qs.map((q, i) => `
+            <tr>
+                <td class="text-muted fw-semibold">${i + 1}</td>
+                <td class="small">${q.question}</td>
+                <td><span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">${q.options[0] || '—'}</span></td>
+                <td class="text-muted small">${q.options.slice(1).join('<br>')}</td>
+            </tr>
+        `).join('');
+    }
+
+    // ── Upload ─────────────────────────────────────────────────
+
+    async function uploadQuestions() {
+        const quizId  = document.getElementById('quiz-select').value;
+        const newName = document.getElementById('new-quiz-name').value.trim();
+
+        if (!quizId && !newName) { showToast('Тестті таңдаңыз немесе жаңа тест атауын енгізіңіз', 'error'); return; }
+        if (parsedQuestions.length === 0) { showToast('Жүктелетін сұрақтар жоқ', 'error'); return; }
+
+        const btn = document.getElementById('upload-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Жүктелуде...';
+        document.getElementById('upload-progress').style.display = 'block';
+
+        try {
+            let targetId = quizId;
+            if (!targetId && newName) {
+                const ref = await db.collection('quizzes').add({
+                    title: newName, description: '',
+                    icon: 'fas fa-clipboard-list',
+                    color: 'linear-gradient(135deg,#667eea,#764ba2)',
+                    timeLimit: 0, randomOrder: false, isActive: true,
+                    questionCount: 0,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    createdBy: auth.currentUser.uid
+                });
+                targetId = ref.id;
+                showToast(`"${newName}" тесті жасалды`, 'success');
+            }
+
+            const CHUNK  = 400;
+            const total  = parsedQuestions.length;
+            const existSnap = await db.collection('quizzes').doc(targetId).collection('questions').get();
+            let orderOffset = existSnap.size;
+
+            for (let i = 0; i < total; i += CHUNK) {
+                const chunk = parsedQuestions.slice(i, i + CHUNK);
+                const batch = db.batch();
+                chunk.forEach((q, idx) => {
+                    const ref = db.collection('quizzes').doc(targetId).collection('questions').doc();
+                    batch.set(ref, { question: q.question, options: q.options, correct: q.correct, order: orderOffset + i + idx, img: null });
+                });
+                await batch.commit();
+
+                const pct = Math.round(((i + chunk.length) / total) * 100);
+                document.getElementById('progress-fill').style.width = pct + '%';
+                document.getElementById('progress-pct').textContent  = pct + '%';
+                document.getElementById('progress-label').textContent = `${Math.min(i + CHUNK, total)} / ${total} сұрақ жүктелді`;
+            }
+
+            await db.collection('quizzes').doc(targetId).update({
+                questionCount: firebase.firestore.FieldValue.increment(total)
+            });
+
+            showToast(`${total} сұрақ сәтті жүктелді! ✓`, 'success');
+            document.getElementById('upload-status').textContent = `✓ ${total} сұрақ жүктелді`;
+            btn.innerHTML = '<i class="fas fa-check me-1"></i>Жүктелді!';
+            setTimeout(resetImport, 2000);
+
+        } catch (err) {
+            console.error(err);
+            showToast('Жүктеу кезінде қате орын алды', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-cloud-upload-alt me-1"></i>Firestore-ке жүктеу';
+        }
+    }
+
+    function resetImport() {
+        parsedQuestions = [];
+        document.getElementById('file-input').value = '';
+        document.getElementById('file-info').classList.add('d-none');
+        document.getElementById('file-info').style.display = '';
+        document.getElementById('preview-card').style.display = 'none';
+        document.getElementById('upload-progress').style.display = 'none';
+        document.getElementById('upload-btn').disabled = false;
+        document.getElementById('upload-btn').innerHTML = '<i class="fas fa-cloud-upload-alt me-1"></i>Firestore-ке жүктеу';
+        document.getElementById('upload-status').textContent = '';
+        document.getElementById('progress-fill').style.width = '0%';
+    }
+</script>
+</body>
+</html>
